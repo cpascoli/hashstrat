@@ -3,6 +3,8 @@ require('dotenv').config()
 
 const mnemonic = process.env.MNEMONIC
 const url = process.env.RPC_URL
+const etherscan_api_key = process.env.ETHERSCAN_API_KEY
+
 
 module.exports = {
   networks: {
@@ -36,4 +38,8 @@ module.exports = {
       version: '0.6.6',
     },
   },
+  plugins: ['truffle-plugin-verify'],
+  api_keys: {
+    etherscan: etherscan_api_key
+  }
 }
