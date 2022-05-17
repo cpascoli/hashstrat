@@ -5,11 +5,12 @@ import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/KeeperCompatibleInterface.sol";
 
 import "./Wallet.sol";
+import "./IUniswapV2Router.sol";
 
 
 contract Pool is Wallet, KeeperCompatibleInterface  {
 
-    address private constant UNISWAP_V2_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    //address private constant UNISWAP_V2_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
 
     address private constant WETH = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
     // address private constant DAI = 0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa;
@@ -27,9 +28,12 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     uint public counter;
 
 
-    constructor(address _depositTokenAddress, address _investTokenAddress, uint _updateInterval) public Wallet(_depositTokenAddress) {
+    IUniswapV2Router uniswapV2Router;
+
+    constructor(address _uniswapV2RouterAddress, address _depositTokenAddress, address _investTokenAddress, uint _updateInterval) public Wallet(_depositTokenAddress) {
 
         investToken = IERC20(_investTokenAddress);
+        uniswapV2Router = IUniswapV2Router(_uniswapV2RouterAddress);
 
         interval = _updateInterval;
         lastTimeStamp = block.timestamp;
@@ -109,7 +113,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         //next we need to allow the uniswapv2 router to spend the token we just sent to this contract
         //by calling IERC20 approve you allow the uniswap contract to spend the tokens in this contract
-        IERC20(_tokenIn).approve(UNISWAP_V2_ROUTER, _amountIn);
+        IERC20(_tokenIn).approve(address(uniswapV2Router), _amountIn);
 
         //path is an array of addresses.
         //this path array will have 3 addresses [tokenIn, WETH, tokenOut]
@@ -128,7 +132,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         //then we will call swapExactTokensForTokens
         //for the deadline we will pass in block.timestamp
         //the deadline is the latest time the trade is valid for
-        IUniswapV2Router(UNISWAP_V2_ROUTER).swapExactTokensForTokens(
+        uniswapV2Router.swapExactTokensForTokens(
             _amountIn,
             _amountOutMin,
             path,
@@ -161,25 +165,11 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
             path[2] = _tokenOut;
         }
 
-        uint256[] memory amountOutMins = IUniswapV2Router(UNISWAP_V2_ROUTER).getAmountsOut(_amountIn, path);
+        uint256[] memory amountOutMins = uniswapV2Router.getAmountsOut(_amountIn, path);
+
+        require(amountOutMins.length >= path.length , "Invalid amountOutMins size");
+
         return amountOutMins[path.length - 1];
     }
 
-
-
-}
-
-
-
-interface IUniswapV2Router {
-
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
-
-    function swapExactTokensForTokens(
-        uint amountIn, //amount of tokens we are sending in
-        uint amountOutMin, //the minimum amount of tokens we want out of the trade
-        address[] calldata path,  //list of token addresses we are going to trade in.  this is necessary to calculate amounts
-        address to,  //this is the address we are going to send the output tokens to
-        uint deadline //the last time that the trade is valid for
-    ) external returns (uint[] memory amounts);
 }

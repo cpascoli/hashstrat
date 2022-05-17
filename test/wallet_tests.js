@@ -3,6 +3,7 @@ const truffleAssert = require("truffle-assertions")
 const USDCP = artifacts.require("USDCP")
 const Wallet = artifacts.require("Wallet")
 
+
 contract("Wallet", accounts => {
 
     const defaultAccount = accounts[0]
