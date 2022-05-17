@@ -11,6 +11,8 @@ contract Wallet is Ownable {
 
     IERC20 internal depositToken;
 
+    uint public totalDeposited = 0;
+
     // depositToken token balances
     mapping (address => uint256) public balances;
 
@@ -29,9 +31,9 @@ contract Wallet is Ownable {
     }
 
 
-    function deposit(uint256 amount) public {
+    function deposit(uint256 amount) public virtual {
         require(amount > 0, "Deposit amount should not be 0");
-        require(depositToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance");
+        require(depositToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance!");
 
         balances[msg.sender] = balances[msg.sender] + amount;
 
@@ -42,6 +44,8 @@ contract Wallet is Ownable {
         }
         
         depositToken.transferFrom(msg.sender, address(this), amount);
+
+        totalDeposited = totalDeposited + amount;
 
         emit Deposited(msg.sender, amount);
     }
