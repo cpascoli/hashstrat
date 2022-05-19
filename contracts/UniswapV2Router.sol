@@ -2,9 +2,15 @@
 pragma solidity ^0.6.6;
 
 import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./IUniswapV2Router.sol";
 
-contract UniswapV2Router is IUniswapV2Router {
+/**
+    Mock implementation of swap functionality and price feed via the interfaces:
+    - UniswapV2Router to swap depositTokens into investTokens
+    - AggregatorV3Interface to provide price for the  investTokens/depositTokens pair
+ */
+contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
     address public poolAddress;
 
@@ -21,6 +27,19 @@ contract UniswapV2Router is IUniswapV2Router {
     }
 
 
+    // Set the price used for the investTokens/depositTokens swap
+    function setPrice(uint _price) external {
+        price = _price;
+    }
+
+    // Set the poolAddress (probably reduntant)
+    function setPoolAddress(address _poolAddress) external {
+        poolAddress = _poolAddress;
+    }
+
+
+    //// UniswapV2Router interface implementation
+     
     function getAmountsOut(uint amountIn, address[] calldata /* path */) external override view returns (uint[] memory amounts) {
         uint[] memory amountOutMins = new uint[](3);
         // amountOutMins[2] = 1;
@@ -39,9 +58,9 @@ contract UniswapV2Router is IUniswapV2Router {
 
         require(poolAddress != address(0), "poolAddress not set");
 
-
         uint amount = amountIn / price;
 
+        //FIXME poolAddress can probably just be msg.sender
         depositTokenAddress.transferFrom(poolAddress, address(this), amountIn);
         investToken.transfer(to, amount);
 
@@ -50,12 +69,46 @@ contract UniswapV2Router is IUniswapV2Router {
         return new uint[](0);
     }
 
-    function setPrice(uint _price) external {
-        price = _price;
+
+
+    //// AggregatorV3Interface interface implementation
+
+    function latestRoundData() external override view  returns (
+        uint80 roundId,
+        int256 answer,
+        uint256 startedAt,
+        uint256 updatedAt,
+        uint80 answeredInRound
+    ) {
+        return (0, int256(price), 0, 0, 0);
     }
 
-    function setPoolAddress(address _poolAddress) external {
-        poolAddress = _poolAddress;
+
+    function decimals() external override view  returns (uint8) {
+        return 18;
     }
+
+    function description() external override view returns (string memory) {
+        return "Mock price feed";
+    }
+
+    function version() external override view  returns (uint256) {
+        return 1;
+    }
+
+
+    // getRoundData and latestRoundData should both raise "No data present"
+    // if they do not have data to report, instead of returning unset values
+    // which could be misinterpreted as actual reported values.
+    function getRoundData(uint80 _roundId) override external view returns (
+        uint80 roundId,
+        int256 answer,
+        uint256 startedAt,
+        uint256 updatedAt,
+        uint80 answeredInRound
+    ) {
+        return (0, int256(price), 0, 0, 0);
+    }
+
 
 }

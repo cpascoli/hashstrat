@@ -6,6 +6,7 @@ import "@chainlink/contracts/src/v0.6/interfaces/KeeperCompatibleInterface.sol";
 
 import "./Wallet.sol";
 import "./IUniswapV2Router.sol";
+import "./PriceConsumerV3.sol";
 
 
 contract Pool is Wallet, KeeperCompatibleInterface  {
@@ -16,7 +17,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     // address private constant DAI = 0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa;
 
 
-    event Invested(uint256 amount, uint256 spent, uint256 bought);
+    event Invested(uint amount, uint spent, uint bought);
+    event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
 
     IERC20 internal investToken;
 
@@ -29,11 +31,22 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
 
     IUniswapV2Router uniswapV2Router;
+    IPriceFeed priceFeed;
+ 
 
-    constructor(address _uniswapV2RouterAddress, address _depositTokenAddress, address _investTokenAddress, uint _updateInterval) public Wallet(_depositTokenAddress) {
+    // Accounting
+    mapping (address => uint256) public portfolioLPAllocation;
+    uint public totalPortfolioLP;
+    
+    uint immutable portFolioPercentagePrecision = 10**4;
+    uint immutable lpPrecision = 10**18;
+    uint immutable public initialLPAllocation = 100 * 10**18;
+
+    constructor(address _uniswapV2RouterAddress, address _priceFeedAddress, address _depositTokenAddress, address _investTokenAddress, uint _updateInterval) public Wallet(_depositTokenAddress) {
 
         investToken = IERC20(_investTokenAddress);
         uniswapV2Router = IUniswapV2Router(_uniswapV2RouterAddress);
+        priceFeed = IPriceFeed(_priceFeedAddress);
 
         interval = _updateInterval;
         lastTimeStamp = block.timestamp;
@@ -79,26 +92,89 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         emit Invested(amount, spent, bought);
     }
 
+
+    /**
+        returns the portfolio value in depositTokens) 
+    */
+    function portfioValue() public view returns(uint) {
+        uint depositTokens = depositToken.balanceOf(address(this));
+        uint investTokens = investToken.balanceOf(address(this));
+
+        uint depositTokenPrice = 1; //FIXME this assumes deposit token value is 1 USD
+
+        int investTokenPrice = priceFeed.getLatestPrice();
+        require (investTokenPrice >= 0, "Received negative invest token price");
+
+        // portoflio value is the sum of deposit token value and invest token value
+        uint value = (depositTokens * depositTokenPrice) + (investTokens * uint(investTokenPrice));
+
+        return value;
+    }
+
+    // Pool deposit token balance
     function depositTokenBalance() external view returns(uint256) {
         return depositToken.balanceOf(address(this));
     }
 
+    // Pool invest token balance
     function investTokenBalance() external view returns(uint256) {
         return investToken.balanceOf(address(this));
     }
 
-
-    function deposit(uint256 amount) public override {
+    // User deposits 'amount' of depositTokens into the pool
+    function deposit(uint amount) public override {
         super.deposit(amount);
+
+        // first deposit => allocate the inital LP tokens amount to the user
+        if (totalPortfolioLP == 0) {
+            portfolioLPAllocation[msg.sender] = initialLPAllocation;
+            totalPortfolioLP = initialLPAllocation;
+
+            emit Deposited(amount, initialLPAllocation, totalPortfolioLP);
+            return;
+        }
+
+
+        // if already have allocated LP tokens => calculate the additional LP tokens for this deposit
 
         //TODO
         // total portfolio value
+        uint portFolioValue = portfioValue();
 
-        // calculate portfolio % of the deposit
+        // calculate portfolio % of the deposit (using lpPrecision digits precision)
+        uint portFolioPercentage = lpPrecision * amount / portFolioValue;
 
-        // calculate LP tokens for the deposit
+
+        // calculate the amount of LP tokens for the deposit so that they represent 
+        // a % of the existing LP tokens equivalent to the % value of this deposit to the whole portfolio value.
+        // 
+        // X := P * T / (1 - P)  
+        //      X: additinal LP toleks to allocate to the user to account for this deposit
+        //      P: Percentage of portfolio accounted by this deposit
+        //      T: total LP tokens allocated before this deposit
+  
+        uint depositLPTokens = (portFolioPercentage * totalPortfolioLP) / ((1 * lpPrecision) - portFolioPercentage);
+
+        portfolioLPAllocation[msg.sender] = portfolioLPAllocation[msg.sender] + depositLPTokens;
+        totalPortfolioLP = totalPortfolioLP + depositLPTokens;
+
+        emit Deposited(amount, depositLPTokens, totalPortfolioLP);
 
     }
+
+
+    // the LP tokens allocations to the user
+    function portfolioAllocation() public view returns (uint) {
+        return portfolioLPAllocation[msg.sender];
+    }
+
+
+    function portfolioPercentage() public view returns (uint) {
+        // the % of the portfolio of the user (with 'portFolioPercentagePrecision' digits precision)
+        uint portFolioPercentage = portFolioPercentagePrecision * portfolioLPAllocation[msg.sender] / totalPortfolioLP;
+        return portFolioPercentage;
+    }
+
 
 
     /// INVEST
