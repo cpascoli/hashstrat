@@ -64,8 +64,6 @@ contract("Pool", accounts => {
 
         let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
         let balanceWethAfter = await weth.balanceOf(pool.address)
-        console.log("balanceUsdcAfter: ", web3.utils.fromWei(balanceUsdcAfter, 'ether'))
-        console.log("balanceWethAfter: ", web3.utils.fromWei(balanceWethAfter, 'ether'))
 
         assert.equal(web3.utils.fromWei(balanceUsdcAfter, 'ether'), 90, "Invalid USDCP balance after invest")
         assert.equal(web3.utils.fromWei(balanceWethAfter, 'ether'), 5, "Invalid WETH balance after invest")

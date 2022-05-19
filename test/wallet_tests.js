@@ -28,8 +28,6 @@ contract("Wallet", accounts => {
             from: defaultAccount, gas: 5000000, gasPrice: 500000000
         })
 
-        console.log("deposited")
-
         let balanceAfter = await wallet.getBalance()
         assert.equal(balanceAfter, depositAmount , "Account should have expected token balance")
     })
