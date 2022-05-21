@@ -20,8 +20,9 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     event Invested(uint amount, uint spent, uint bought);
     event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
 
-    event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
     event WithdrawRequest(uint amount, uint percentage);
+    event WithdrawInfo(uint userLP, uint lpToWithdraw, uint withdrawDepositTokensAmount, uint withdrawInvestTokensTokensAmount, uint depositTokensSwapped);
+    event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
 
     IERC20 internal investToken;
 
@@ -41,7 +42,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     mapping (address => uint256) public portfolioLPAllocation;
     uint public totalPortfolioLP;
     
-    uint immutable portFolioPercentagePrecision = 10**8; // 8 digit precision for portfolio % calculations
+    uint immutable portFolioPercentagePrecision = 10**18; // 8 digit precision for portfolio % calculations
     uint immutable lpPrecision = 10**18;
     uint immutable public initialLPAllocation = 100 * 10**18;
 
@@ -139,21 +140,24 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         require (amount > 0, "Amount to withdraw should be > 0");
 
         // Ensure the user account has enough funds in the Pool
-        uint pv = portfolioValue();
+        uint pv = portfolioValue(); // the value of the user portfolio
         require (pv >= amount, "Withdrawal limits exceeded");
 
-        // user 
-        uint userPortfolioPerc = portfolioPercentage();  // includes portFolioPercentagePrecision digits
-        uint withdrawPerc = userPortfolioPerc * amount / pv;  //includes portFolioPercentagePrecision digits
+        // uint userPortfolioPerc = portfolioPercentage();  // includes portFolioPercentagePrecision digits
+
+        // the % of the whole pool to be withdrawn
+        uint withdrawPerc = portFolioPercentagePrecision * amount / totalPortfolioValue();
 
         emit WithdrawRequest(amount, withdrawPerc);
 
-        //uint tpv = totalPortfolioValue();
-
         // calculte the user LP amount to be deduced  
         uint userLP = portfolioLPAllocation[msg.sender];
-        uint lpToWithdraw = userLP * withdrawPerc;
+        uint lpToWithdraw = totalPortfolioLP * withdrawPerc / portFolioPercentagePrecision;
+
         require (lpToWithdraw > 0, "LP to withdraw can't be 0");
+        require (userLP >= lpToWithdraw, "LP to withdraw can't be more than account amount");
+        require (totalPortfolioLP >= lpToWithdraw, "LP to withdraw can't be more than portfolio amount");
+
 
         // reduce user LP allocation
         portfolioLPAllocation[msg.sender] = userLP - lpToWithdraw;
@@ -164,15 +168,20 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint investTokens = investToken.balanceOf(address(this));
 
         uint withdrawDepositTokensAmount = depositTokens * withdrawPerc / portFolioPercentagePrecision;
-        uint investTokensTokensAmount = investTokens * withdrawPerc / portFolioPercentagePrecision;
+        uint withdrawInvestTokensTokensAmount = investTokens * withdrawPerc / portFolioPercentagePrecision;
 
-        // swap quota of investTokens for this withdraw
-        uint256 amountMin = getAmountOutMin(address(depositToken), address(investToken), investTokensTokensAmount);
-        swap(address(depositToken), address(investToken), investTokensTokensAmount, amountMin, address(this));
+        if (withdrawInvestTokensTokensAmount > 0) {
+            // swap quota of investTokens for this withdraw
+            uint256 amountMin = getAmountOutMin(address(depositToken), address(investToken), withdrawInvestTokensTokensAmount);
+            swap(address(depositToken), address(investToken), withdrawInvestTokensTokensAmount, amountMin, address(this));
+        }
 
         // determine how much depositTokens where received
         uint depositTokensAfterSwap = depositToken.balanceOf(address(this));
         uint depositTokensSwapped = depositTokensAfterSwap - depositTokens;
+
+        emit WithdrawInfo(userLP, lpToWithdraw, withdrawDepositTokensAmount, withdrawInvestTokensTokensAmount, depositTokensSwapped);
+
 
         // transfer depositTokens to user
         uint depositTokenWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;
@@ -269,7 +278,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
 
     // UPKEEP FUNCTIONALITY
-    function checkUpkeep(bytes calldata checkData) external override returns (bool upkeepNeeded, bytes memory /* performData */) {
+    function checkUpkeep(bytes calldata /* checkData */) external override returns (bool upkeepNeeded, bytes memory /* performData */) {
         upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
         // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
     }
