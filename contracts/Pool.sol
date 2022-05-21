@@ -20,6 +20,9 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     event Invested(uint amount, uint spent, uint bought);
     event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
 
+    event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
+    event WithdrawRequest(uint amount, uint percentage);
+
     IERC20 internal investToken;
 
     /**
@@ -74,10 +77,9 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     function totalPortfolioValue() public view returns(uint) {
         uint depositTokens = depositToken.balanceOf(address(this));
         uint investTokens = investToken.balanceOf(address(this));
-
       
         int investTokenPrice = priceFeed.getLatestPrice();
-        require (investTokenPrice >= 0, "Received negative invest token price");
+        require (investTokenPrice >= 0, "Invest token price can't be negative");
 
         // portoflio value is the sum of deposit token value and invest token value
         uint value = depositTokens + (investTokens * uint(investTokenPrice));
@@ -131,6 +133,53 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
     }
 
+    // Withdraw 'amount' of depositTokens from the pool
+    function withdraw(uint amount) public override {
+
+        require (amount > 0, "Amount to withdraw should be > 0");
+
+        // Ensure the user account has enough funds in the Pool
+        uint pv = portfolioValue();
+        require (pv >= amount, "Withdrawal limits exceeded");
+
+        // user 
+        uint userPortfolioPerc = portfolioPercentage();  // includes portFolioPercentagePrecision digits
+        uint withdrawPerc = userPortfolioPerc * amount / pv;  //includes portFolioPercentagePrecision digits
+
+        emit WithdrawRequest(amount, withdrawPerc);
+
+        //uint tpv = totalPortfolioValue();
+
+        // calculte the user LP amount to be deduced  
+        uint userLP = portfolioLPAllocation[msg.sender];
+        uint lpToWithdraw = userLP * withdrawPerc;
+        require (lpToWithdraw > 0, "LP to withdraw can't be 0");
+
+        // reduce user LP allocation
+        portfolioLPAllocation[msg.sender] = userLP - lpToWithdraw;
+        totalPortfolioLP = totalPortfolioLP - lpToWithdraw;
+
+        // calculate amount of depositTokens & investTokens to withdraw
+        uint depositTokens = depositToken.balanceOf(address(this));
+        uint investTokens = investToken.balanceOf(address(this));
+
+        uint withdrawDepositTokensAmount = depositTokens * withdrawPerc / portFolioPercentagePrecision;
+        uint investTokensTokensAmount = investTokens * withdrawPerc / portFolioPercentagePrecision;
+
+        // swap quota of investTokens for this withdraw
+        uint256 amountMin = getAmountOutMin(address(depositToken), address(investToken), investTokensTokensAmount);
+        swap(address(depositToken), address(investToken), investTokensTokensAmount, amountMin, address(this));
+
+        // determine how much depositTokens where received
+        uint depositTokensAfterSwap = depositToken.balanceOf(address(this));
+        uint depositTokensSwapped = depositTokensAfterSwap - depositTokens;
+
+        // transfer depositTokens to user
+        uint depositTokenWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;
+        depositToken.transfer(msg.sender, depositTokenWithdraw);
+
+        emit Withdraw(amount, lpToWithdraw, depositTokenWithdraw);
+    }
 
 
 
@@ -149,11 +198,11 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint256 amountMin = getAmountOutMin(address(depositToken), address(investToken), amount);
         swap(address(depositToken), address(investToken), amount,amountMin, address(this));
 
-        uint256 depositTokenBalance = depositToken.balanceOf(address(this));
-        uint256 investTokenBalance = investToken.balanceOf(address(this));
+        uint256 depositTokenBalanceAfter = depositToken.balanceOf(address(this));
+        uint256 investTokenBalanceAfter = investToken.balanceOf(address(this));
 
-        uint256 spent = depositTokenBalanceBefore - depositTokenBalance;
-        uint256 bought = investTokenBalance - investTokenBalanceBefore;
+        uint256 spent = depositTokenBalanceBefore - depositTokenBalanceAfter;
+        uint256 bought = investTokenBalanceAfter - investTokenBalanceBefore;
 
         emit Invested(amount, spent, bought);
     }

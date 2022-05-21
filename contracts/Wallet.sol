@@ -50,7 +50,7 @@ contract Wallet is Ownable {
         emit Deposited(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount) public {
+    function withdraw(uint256 amount) public virtual {
         require(balances[msg.sender] >= amount, "Insufficient token balance");
 
         balances[msg.sender] = balances[msg.sender] - amount;
