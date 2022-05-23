@@ -1,4 +1,5 @@
 const truffleAssert = require("truffle-assertions")
+const { round } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
@@ -21,7 +22,7 @@ contract("Pool", accounts => {
     let priceFeed
 
     // this should match Pool::portFolioPercentagePrecision
-    const precision = 10**8
+    const precision = 10**18
 
     beforeEach(async () => {
         usdcp = await USDCP.new(web3.utils.toWei('100000', 'ether'))
@@ -116,20 +117,20 @@ contract("Pool", accounts => {
         
         // portfolio % for the 2 accounts should be 33.33% 66.66%
         const portfolioPercentage1 = await pool.portfolioPercentage({ from: account1 }) * 100 / precision // (8 digits precision)
-        assert.equal(portfolioPercentage1, 33.333333)
+        assert.equal(round(portfolioPercentage1), 33.33)
 
         const portfolioPercentage2 = await pool.portfolioPercentage({ from: account2 }) * 100 / precision // (8 digits precision)
-        assert.equal(portfolioPercentage2, 66.666666)
+        assert.equal(round(portfolioPercentage2), 66.67)
 
         // swap tokens
         await pool.invest()
 
          // portfolio % for the 2 accounts should still be 33.33% 66.66%
         const portfolioPercentage1after = await pool.portfolioPercentage({ from: account1 }) * 100 / precision // (8 digits precision)
-        assert.equal(portfolioPercentage1, 33.333333)
+        assert.equal(round(portfolioPercentage1), 33.33)
 
         const portfolioPercentage2after = await pool.portfolioPercentage({ from: account2 }) * 100 / precision // (8 digits precision)
-        assert.equal(portfolioPercentage2, 66.666666)
+        assert.equal(round(portfolioPercentage2), 66.67)
 
         const tokenABalance = await usdcp.balanceOf(pool.address)
         const tokenBBalance = await weth.balanceOf(pool.address)
