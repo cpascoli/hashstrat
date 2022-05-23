@@ -115,7 +115,7 @@ contract("Pool", accounts => {
         assert.equal(web3.utils.fromWei(portfolioAllocation2, 'ether'), 200 , "Invalid second portfolio allocation")
 
         // expect 300 total portfolio LP 
-        const totalPortfolioLP = await pool.totalPortfolioLP.call() 
+        const totalPortfolioLP = await lptoken.totalSupply()
         assert.equal(web3.utils.fromWei(totalPortfolioLP, 'ether'), 300 , "Invalid total portfolio allocation")
 
         

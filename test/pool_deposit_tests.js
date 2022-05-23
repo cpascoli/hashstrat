@@ -83,7 +83,7 @@ contract("Pool", accounts => {
         assert.equal(web3.utils.fromWei(portfolioAllocation, 'ether'), 100 , "Invalid first portfolio allocation")
 
         // expect 100 total portfolio allocation 
-        const totalPortfolioLP = await pool.totalPortfolioLP.call() 
+        const totalPortfolioLP = await lptoken.totalSupply()
         assert.equal(web3.utils.fromWei(totalPortfolioLP, 'ether'), 100 , "Invalid total portfolio allocation")
 
         // expect 100% portfolio allocation
@@ -123,7 +123,7 @@ contract("Pool", accounts => {
         assert.equal(web3.utils.fromWei(portfolioAllocation2, 'ether'), 300 , "Invalid second portfolio allocation")
 
         // expect 300 total portfolio allocation 
-        const totalPortfolioLP = await pool.totalPortfolioLP.call() 
+        const totalPortfolioLP = await lptoken.totalSupply()
         assert.equal(web3.utils.fromWei(totalPortfolioLP, 'ether'), 300 , "Invalid total portfolio allocation")
 
         // expect 100% portfolio allocation
@@ -163,7 +163,7 @@ contract("Pool", accounts => {
         assert.equal(web3.utils.fromWei(portfolioAllocation2, 'ether'), 200 , "Invalid second portfolio allocation")
 
         // expect 300 total portfolio allocation 
-        const totalPortfolioLP = await pool.totalPortfolioLP.call() 
+        const totalPortfolioLP = await lptoken.totalSupply()
         assert.equal(web3.utils.fromWei(totalPortfolioLP, 'ether'), 300 , "Invalid total portfolio allocation")
 
         

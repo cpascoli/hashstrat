@@ -3,11 +3,12 @@ pragma solidity ^0.6.6;
 import "../node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./MinterRole.sol";
 
-// interface ILPToken {
-//     function mint(address to, uint256 value) external returns (bool);
-//     function burn(address to, uint256 value) external returns (bool);
-//     function balanceOf(address account) external view returns (uint256);
-// }
+/**
+ * The LP Token of the pool.
+ * New tokens get minted by the Pool when users deposit into the pool
+ * and get burt when users withdraw from the pool.
+ * Only the Pool contract should be able to mint/burn these tokens.
+ */
 
 contract PoolLPToken is ERC20, MinterRole {
 
