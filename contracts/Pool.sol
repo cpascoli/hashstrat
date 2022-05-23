@@ -7,7 +7,7 @@ import "@chainlink/contracts/src/v0.6/interfaces/KeeperCompatibleInterface.sol";
 import "./Wallet.sol";
 import "./IUniswapV2Router.sol";
 import "./PriceConsumerV3.sol";
-
+import "./PoolLPToken.sol";
 
 contract Pool is Wallet, KeeperCompatibleInterface  {
 
@@ -19,10 +19,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
     event Invested(uint amount, uint spent, uint bought);
     event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
-
-    event WithdrawRequest(uint amount, uint percentage);
-    event WithdrawInfo(uint userLP, uint lpToWithdraw, uint withdrawDepositTokensAmount, uint withdrawInvestTokensTokensAmount, uint depositTokensSwapped);
-    event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw, uint allowance);
+    event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
 
     event PriceFeed(int price);
 
@@ -35,23 +32,26 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     uint public lastTimeStamp;
     uint public counter;
 
-
     IUniswapV2Router uniswapV2Router;
     IPriceFeed priceFeed;
- 
+    PoolLPToken lpToken;
 
-    // Accounting
-    mapping (address => uint256) public portfolioLPAllocation;
-    uint public totalPortfolioLP;
-    
     uint immutable portFolioPercentagePrecision = 10**18; // 8 digit precision for portfolio % calculations
     uint immutable lpPrecision = 10**18;
     uint immutable public initialLPAllocation = 100 * 10**18;
 
-    constructor(address _uniswapV2RouterAddress, address _priceFeedAddress, address _depositTokenAddress, address _investTokenAddress, uint _updateInterval) public Wallet(_depositTokenAddress) {
+
+    constructor(
+        address _uniswapV2RouterAddress, 
+        address _priceFeedAddress, 
+        address _depositTokenAddress, 
+        address _investTokenAddress, 
+        address _lpTokenAddress,
+        uint _updateInterval) public Wallet(_depositTokenAddress) {
 
         investToken = IERC20(_investTokenAddress);
         uniswapV2Router = IUniswapV2Router(_uniswapV2RouterAddress);
+        lpToken = PoolLPToken(_lpTokenAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
 
         interval = _updateInterval;
@@ -60,12 +60,13 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
     // the LP tokens allocations to the user
     function portfolioAllocation() public view returns (uint) {
-        return portfolioLPAllocation[msg.sender];
+        //return portfolioLPAllocation[msg.sender];
+        return lpToken.balanceOf(msg.sender);
     }
 
     function portfolioPercentage() public view returns (uint) {
         // the % of the portfolio of the user (with 'portFolioPercentagePrecision' digits precision)
-        uint portFolioPercentage = portFolioPercentagePrecision * portfolioLPAllocation[msg.sender] / totalPortfolioLP;
+        uint portFolioPercentage = portFolioPercentagePrecision * lpToken.balanceOf(msg.sender) / lpToken.totalSupply();
         return portFolioPercentage;
     }
 
@@ -109,11 +110,10 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         super.deposit(amount);
 
         ///// first deposit => allocate the inital LP tokens amount to the user
-        if (totalPortfolioLP == 0) {
-            portfolioLPAllocation[msg.sender] = initialLPAllocation;
-            totalPortfolioLP = initialLPAllocation;
+        if (lpToken.totalSupply() == 0) {
+            lpToken.mint(msg.sender, initialLPAllocation);
 
-            emit Deposited(amount, initialLPAllocation, totalPortfolioLP);
+            emit Deposited(amount, initialLPAllocation, initialLPAllocation);
             return;
         }
 
@@ -131,13 +131,10 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         //      P: Percentage of portfolio accounted by this deposit
         //      T: total LP tokens allocated before this deposit
   
-        uint depositLPTokens = (portFolioPercentage * totalPortfolioLP) / ((1 * lpPrecision) - portFolioPercentage);
+        uint depositLPTokens = (portFolioPercentage * lpToken.totalSupply()) / ((1 * lpPrecision) - portFolioPercentage);
+        lpToken.mint(msg.sender, depositLPTokens);
 
-        portfolioLPAllocation[msg.sender] = portfolioLPAllocation[msg.sender] + depositLPTokens;
-        totalPortfolioLP = totalPortfolioLP + depositLPTokens;
-
-        emit Deposited(amount, depositLPTokens, totalPortfolioLP);
-
+        emit Deposited(amount, depositLPTokens, lpToken.totalSupply());
     }
 
     // Withdraw 'amount' of depositTokens from the pool
@@ -149,25 +146,16 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint pv = portfolioValue(); // the value of the user portfolio
         require (pv >= amount, "Withdrawal limits exceeded");
 
-        // uint userPortfolioPerc = portfolioPercentage();  // includes portFolioPercentagePrecision digits
-
         // the % of the whole pool to be withdrawn
         uint withdrawPerc = portFolioPercentagePrecision * amount / totalPortfolioValue();
 
-        emit WithdrawRequest(amount, withdrawPerc);
+        // calculte the LP amount to burn
+        uint lpToBurn = lpToken.totalSupply() * withdrawPerc / portFolioPercentagePrecision;
+        require (lpToBurn > 0, "LP to withdraw is 0");
+        require (lpToBurn <= lpToken.balanceOf(msg.sender), "LP to withdraw more than account balance");
 
-        // calculte the user LP amount to be deduced  
-        uint userLP = portfolioLPAllocation[msg.sender];
-        uint lpToWithdraw = totalPortfolioLP * withdrawPerc / portFolioPercentagePrecision;
-
-        require (lpToWithdraw > 0, "LP to withdraw can't be 0");
-        require (userLP >= lpToWithdraw, "LP to withdraw can't be more than account amount");
-        require (totalPortfolioLP >= lpToWithdraw, "LP to withdraw can't be more than portfolio amount");
-
-
-        // reduce user LP allocation
-        portfolioLPAllocation[msg.sender] = userLP - lpToWithdraw;
-        totalPortfolioLP = totalPortfolioLP - lpToWithdraw;
+        // burn the user LP
+        lpToken.burn(msg.sender, lpToBurn);
 
         // calculate amount of depositTokens & investTokens to withdraw
         uint depositTokens = depositToken.balanceOf(address(this));
@@ -177,26 +165,23 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint withdrawInvestTokensTokensAmount = investTokens * withdrawPerc / portFolioPercentagePrecision;
 
         if (withdrawInvestTokensTokensAmount > 0) {
-            // swap quota of investTokens for this withdraw
+            // swap some investTokens into depositTokens to be withdrawn
             uint256 amountMin = getAmountOutMin(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount);
             swap(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount, amountMin, address(this));
         }
 
-        // determine how much depositTokens where received
+        // determine how much depositTokens where swapped
         uint depositTokensAfterSwap = depositToken.balanceOf(address(this));
         require(depositTokensAfterSwap >= depositTokens, "Deposit tokens after swap should not be less than amount before the swap");
         uint depositTokensSwapped = depositTokensAfterSwap - depositTokens;
 
-        emit WithdrawInfo(userLP, lpToWithdraw, withdrawDepositTokensAmount, withdrawInvestTokensTokensAmount, depositTokensSwapped);
-
-
-        // transfer depositTokens to user
+        // transfer depositTokens to the user
         uint depositTokenWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;
         
-        uint allowance = depositToken.allowance(address(this), msg.sender);
+        //uint allowance = depositToken.allowance(address(this), msg.sender);
         depositToken.transfer(msg.sender, depositTokenWithdraw);
 
-        emit Withdraw(amount, lpToWithdraw, depositTokenWithdraw, allowance);
+        emit Withdraw(amount, lpToBurn, depositTokenWithdraw);
     }
 
 

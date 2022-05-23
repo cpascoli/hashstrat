@@ -7,6 +7,7 @@ const Pool = artifacts.require("Pool")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PriceConsumerV3 = artifacts.require("PriceConsumerV3")
+const PoolLPToken = artifacts.require("PoolLPToken")
 
 contract("Pool", accounts => {
 
@@ -20,6 +21,7 @@ contract("Pool", accounts => {
     let usdcp
     let weth
     let priceFeed
+    let lptoken
 
     // this should match Pool::portFolioPercentagePrecision
     const precision = 10**18
@@ -30,14 +32,17 @@ contract("Pool", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
+        lptoken = await PoolLPToken.new()
+        pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, 24 * 60 * 60, {from: defaultAccount});
         
-        pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, 24 * 60 * 60, {from: defaultAccount});
-        
+        await lptoken.addMinter(pool.address)
+        await lptoken.renounceMinter()
         await uniswap.setPoolAddress(pool.address) //FIXME this is probably unnecessary
 
-        // Give some WETH liquidity to uniswap to performs some swaps
+        // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
+        await usdcp.transfer(uniswap.address, web3.utils.toWei('10000', 'ether'))
         await weth.transfer(uniswap.address, web3.utils.toWei('1000', 'ether'))
-     
+
         // Give some inital usdcp tokens to account1 and account2
         await usdcp.transfer(account1, web3.utils.toWei('1000', 'ether'))
         await usdcp.transfer(account2, web3.utils.toWei('1000', 'ether'))
@@ -89,7 +94,6 @@ contract("Pool", accounts => {
         // expect portfolio allocation for account1 to be 100 LP tokens
         const portfolioAllocation1 = await pool.portfolioAllocation({ from: account1 })
         assert.equal(web3.utils.fromWei(portfolioAllocation1, 'ether'), 100 , "Invalid first portfolio allocation")
-
 
         // swap tokens
         await pool.invest()
