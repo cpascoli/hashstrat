@@ -22,7 +22,9 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
     event WithdrawRequest(uint amount, uint percentage);
     event WithdrawInfo(uint userLP, uint lpToWithdraw, uint withdrawDepositTokensAmount, uint withdrawInvestTokensTokensAmount, uint depositTokensSwapped);
-    event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
+    event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw, uint allowance);
+
+    event PriceFeed(int price);
 
     IERC20 internal investToken;
 
@@ -86,6 +88,10 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint value = depositTokens + (investTokens * uint(investTokenPrice));
 
         return value;
+    }
+
+    function latestPrice() public view returns(int) {
+        return priceFeed.getLatestPrice();
     }
 
     // returns the deposit token balance of the pool
@@ -172,12 +178,13 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         if (withdrawInvestTokensTokensAmount > 0) {
             // swap quota of investTokens for this withdraw
-            uint256 amountMin = getAmountOutMin(address(depositToken), address(investToken), withdrawInvestTokensTokensAmount);
-            swap(address(depositToken), address(investToken), withdrawInvestTokensTokensAmount, amountMin, address(this));
+            uint256 amountMin = getAmountOutMin(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount);
+            swap(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount, amountMin, address(this));
         }
 
         // determine how much depositTokens where received
         uint depositTokensAfterSwap = depositToken.balanceOf(address(this));
+        require(depositTokensAfterSwap >= depositTokens, "Deposit tokens after swap should not be less than amount before the swap");
         uint depositTokensSwapped = depositTokensAfterSwap - depositTokens;
 
         emit WithdrawInfo(userLP, lpToWithdraw, withdrawDepositTokensAmount, withdrawInvestTokensTokensAmount, depositTokensSwapped);
@@ -185,9 +192,11 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         // transfer depositTokens to user
         uint depositTokenWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;
+        
+        uint allowance = depositToken.allowance(address(this), msg.sender);
         depositToken.transfer(msg.sender, depositTokenWithdraw);
 
-        emit Withdraw(amount, lpToWithdraw, depositTokenWithdraw);
+        emit Withdraw(amount, lpToWithdraw, depositTokenWithdraw, allowance);
     }
 
 

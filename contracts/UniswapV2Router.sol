@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.6;
 
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./IUniswapV2Router.sol";
@@ -14,15 +15,15 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
     address public poolAddress;
 
-    IERC20 internal depositTokenAddress;
+    IERC20 internal depositToken;
     IERC20 internal investToken;
 
     uint256 public price = 2;
 
-    event Swapped(uint256 amountIn, uint256 amountOut, uint256 price);
+    event Swapped(string direction, uint256 amountIn, uint256 amountOut, uint256 price);
 
     constructor(address _depositTokenAddress, address _investTokenAddress) public  {
-         depositTokenAddress = IERC20(_depositTokenAddress);
+         depositToken = IERC20(_depositTokenAddress);
          investToken = IERC20(_investTokenAddress);
     }
 
@@ -58,13 +59,28 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
         require(poolAddress != address(0), "poolAddress not set");
 
-        uint amount = amountIn / price;
+        if (path[0] == address(depositToken)) {
 
-        //FIXME poolAddress can probably just be msg.sender
-        depositTokenAddress.transferFrom(poolAddress, address(this), amountIn);
-        investToken.transfer(to, amount);
+            // swap USD => ETH
+            uint amount = amountIn / price;
+            depositToken.transferFrom(poolAddress, address(this), amountIn);
 
-        emit Swapped(amountIn, amount, price);
+            require(investToken.balanceOf(address(this)) >= amount, "Not enough ETH in the pool");
+            investToken.transfer(to, amount);
+
+            emit Swapped("USD -> ETH", amountIn, amount, price);
+
+        } else if (path[0] == address(investToken)) {
+
+            // swap ETH => USD
+            investToken.transferFrom(poolAddress, address(this), amountIn);
+
+            uint amount = amountIn * price;
+            require(depositToken.balanceOf(address(this)) >= amount, "Not enough USD in the pool");
+            depositToken.transfer(to, amount);
+
+            emit Swapped("ETH -> USD", amountIn, amount, price);
+        }
 
         return new uint[](0);
     }
@@ -110,5 +126,26 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
         return (0, int256(price), 0, 0, 0);
     }
 
+
+    function concat(string memory _x, string memory _y) pure internal returns (string memory) {
+        bytes memory _xBytes = bytes(_x);
+        bytes memory _yBytes = bytes(_y);
+
+        string memory _tmpValue = new string(_xBytes.length + _yBytes.length);
+        bytes memory _newValue = bytes(_tmpValue);
+
+        uint i;
+        uint j;
+
+        for(i=0;i<_xBytes.length;i++) {
+            _newValue[j++] = _xBytes[i];
+        }
+
+        for(i=0;i<_yBytes.length;i++) {
+            _newValue[j++] = _yBytes[i];
+        }
+
+        return string(_newValue);
+    }
 
 }
