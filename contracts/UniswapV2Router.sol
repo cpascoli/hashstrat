@@ -96,7 +96,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
         uint256 updatedAt,
         uint80 answeredInRound
     ) {
-        return (0, int256(price), 0, 0, 0);
+        return (0, int256(price), block.timestamp, block.timestamp, 0);
     }
 
 

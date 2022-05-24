@@ -8,6 +8,8 @@ import "./Wallet.sol";
 import "./IUniswapV2Router.sol";
 import "./PriceConsumerV3.sol";
 import "./PoolLPToken.sol";
+import "./strategies/IStrategy.sol";
+
 
 contract Pool is Wallet, KeeperCompatibleInterface  {
 
@@ -17,7 +19,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     // address private constant DAI = 0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa;
 
 
-    event Invested(uint amount, uint spent, uint bought);
+    event Swapped(string swapType, uint amount, uint spent, uint bought);
     event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
     event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
 
@@ -35,6 +37,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     IUniswapV2Router uniswapV2Router;
     IPriceFeed priceFeed;
     PoolLPToken lpToken;
+    IStrategy strategy;
 
     uint immutable portFolioPercentagePrecision = 10**18; // 8 digit precision for portfolio % calculations
     uint immutable lpPrecision = 10**18;
@@ -47,12 +50,14 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         address _depositTokenAddress, 
         address _investTokenAddress, 
         address _lpTokenAddress,
+        address _strategyAddress,
         uint _updateInterval) public Wallet(_depositTokenAddress) {
 
         investToken = IERC20(_investTokenAddress);
         uniswapV2Router = IUniswapV2Router(_uniswapV2RouterAddress);
         lpToken = PoolLPToken(_lpTokenAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
+        strategy = IStrategy(_strategyAddress);
 
         interval = _updateInterval;
         lastTimeStamp = block.timestamp;
@@ -187,23 +192,55 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
     function invest() public {
 
+        // evaluate strategy to see if we should BUY or SELL
+        (StrategyAction action, uint amountIn) = strategy.evaluate(priceFeed.getLatestPrice(), priceFeed.getLatestTimestamp());
+
+        if (action == StrategyAction.NONE || amountIn == 0) {
+            // No rebalancing needed
+            emit Swapped("None", 0, 0, 0);
+            return;
+        }
+
+        // We should BUY or SELL
+        address tokenIn;
+        address tokenOut;
+
+        if (action == StrategyAction.BUY) {
+            tokenIn = address(depositToken);
+            tokenOut = address(investToken);
+        } else if (action == StrategyAction.SELL) {
+            tokenIn = address(investToken);
+            tokenOut = address(depositToken);
+        }
+
+        // balances before swap
         uint256 depositTokenBalanceBefore = depositToken.balanceOf(address(this));
         uint256 investTokenBalanceBefore = investToken.balanceOf(address(this));
 
-        // Spend 10% of available depositTokens
-        uint256 amount = depositTokenBalanceBefore / 10;
-
         // perform swap
-        uint256 amountMin = getAmountOutMin(address(depositToken), address(investToken), amount);
-        swap(address(depositToken), address(investToken), amount,amountMin, address(this));
+        uint256 amountMin = getAmountOutMin(tokenIn, tokenOut, amountIn);
+        swap(tokenIn, tokenOut, amountIn, amountMin, address(this));
 
+        // balances after swap
         uint256 depositTokenBalanceAfter = depositToken.balanceOf(address(this));
         uint256 investTokenBalanceAfter = investToken.balanceOf(address(this));
 
         uint256 spent = depositTokenBalanceBefore - depositTokenBalanceAfter;
         uint256 bought = investTokenBalanceAfter - investTokenBalanceBefore;
+        string memory swapType;
+        
+        if (action == StrategyAction.BUY) {
+            swapType = "BUY";
+            spent = depositTokenBalanceBefore - depositTokenBalanceAfter;
+            bought = investTokenBalanceAfter - investTokenBalanceBefore;
+        } else if (action == StrategyAction.SELL) {
+            swapType = "SELL";
+            spent = investTokenBalanceBefore - investTokenBalanceAfter;
+            bought = depositTokenBalanceAfter - depositTokenBalanceBefore;
+        }
 
-        emit Invested(amount, spent, bought);
+        emit Swapped(swapType, amountIn, spent, bought);
+        
     }
 
 
@@ -268,11 +305,10 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
 
     // UPKEEP FUNCTIONALITY
+
     function checkUpkeep(bytes calldata /* checkData */) external override returns (bool upkeepNeeded, bytes memory /* performData */) {
         upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
-        // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
     }
-
 
     function performUpkeep(bytes calldata /* performData */) external override {
         //We highly recommend revalidating the upkeep in the performUpkeep function
@@ -281,7 +317,6 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
             counter = counter + 1;
             invest();
         }
-        // We don't use the performData in this example. The performData is generated by the Keeper's call to your checkUpkeep function
     }
 
 }

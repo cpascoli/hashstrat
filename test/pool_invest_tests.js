@@ -1,5 +1,5 @@
 const truffleAssert = require("truffle-assertions")
-const { round } = require("./helpers")
+const { round, fromWei, toWei } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
@@ -8,6 +8,7 @@ const Pool = artifacts.require("Pool")
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PriceConsumerV3 = artifacts.require("PriceConsumerV3")
 const PoolLPToken = artifacts.require("PoolLPToken")
+const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
 contract("Pool", accounts => {
 
@@ -22,41 +23,44 @@ contract("Pool", accounts => {
     let weth
     let priceFeed
     let lptoken
+    let strategy
 
     // this should match Pool::portFolioPercentagePrecision
     const precision = 10**18
 
     beforeEach(async () => {
-        usdcp = await USDCP.new(web3.utils.toWei('100000', 'ether'))
-        weth = await WETH.new(web3.utils.toWei('1000', 'ether'))
+        usdcp = await USDCP.new(toWei('100000'))
+        weth = await WETH.new(toWei('1000'))
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
         lptoken = await PoolLPToken.new()
-        pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, 24 * 60 * 60, {from: defaultAccount});
+        strategy = await RebalancingStrategyV1.new(usdcp.address, weth.address, 60, 20)
+        pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
         await uniswap.setPoolAddress(pool.address) //FIXME this is probably unnecessary
+        await strategy.setPoolAddress(pool.address)
 
         // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
-        await usdcp.transfer(uniswap.address, web3.utils.toWei('10000', 'ether'))
-        await weth.transfer(uniswap.address, web3.utils.toWei('1000', 'ether'))
+        await usdcp.transfer(uniswap.address, toWei('10000'))
+        await weth.transfer(uniswap.address, toWei('1000'))
 
         // Give some inital usdcp tokens to account1 and account2
-        await usdcp.transfer(account1, web3.utils.toWei('1000', 'ether'))
-        await usdcp.transfer(account2, web3.utils.toWei('1000', 'ether'))
+        await usdcp.transfer(account1, toWei('1000'))
+        await usdcp.transfer(account2, toWei('1000'))
     })
 
 
     // Test invest function
 
-    it("swap deposit tokens for invest tokens", async () => {
+    it("Rebalance portfolio swapping deposit tokens for invest tokens", async () => {
 
         // deposit 100 USDCP 
-        let depositAmount =  web3.utils.toWei('100', 'ether')
+        let depositAmount = toWei('100')
         await usdcp.approve(pool.address, depositAmount)
-        await pool.deposit(depositAmount, { from: defaultAccount })
+        await pool.deposit(depositAmount)
 
         let balanceUsdcBefore = await usdcp.balanceOf(pool.address)
         assert.equal(balanceUsdcBefore, depositAmount , "Pool should have the expected deposit tokens")
@@ -64,19 +68,24 @@ contract("Pool", accounts => {
         let balanceWethBefore = await weth.balanceOf(pool.address)
         assert.equal(balanceWethBefore, 0, "Pool should have no invested tokens")
 
-        // swap 10% of all deposited tokens at a rate of 2 WETH/USDC
-        // 100 USDC => 90 USDC + 5 WETH
+        // rebalance portfolio to 60%/40%
         await pool.invest()
 
         let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
         let balanceWethAfter = await weth.balanceOf(pool.address)
 
-        assert.equal(web3.utils.fromWei(balanceUsdcAfter, 'ether'), 90, "Invalid USDCP balance after invest")
-        assert.equal(web3.utils.fromWei(balanceWethAfter, 'ether'), 5, "Invalid WETH balance after invest")
+        // calculate expected token balances
+        const targetInvestPerc = await strategy.targetInvestPerc.call()
+        const price = await priceFeed.getLatestPrice()
+        const depositTokensExpected = fromWei(depositAmount) * (100 - targetInvestPerc) / 100
+        const invetTokensExpected = (fromWei(depositAmount) - depositTokensExpected) / price
+
+        assert.equal(fromWei(balanceUsdcAfter), depositTokensExpected, "Invalid deposit balance after invest")
+        assert.equal(fromWei(balanceWethAfter), invetTokensExpected, "Invalid invest balance after invest")
     })
 
 
-    it("Multiple deposits and investments from 2 accounts", async () => {
+    it("Portfolio allocation and portfolio value for 2 accounts", async () => {
 
         let balanceBefore = await usdcp.balanceOf(pool.address)
         assert.equal(balanceBefore, 0, "Account should have no balance")
@@ -100,7 +109,6 @@ contract("Pool", accounts => {
 
         const portfolioValueAfterInvest = await pool.totalPortfolioValue() 
         assert.equal(portfolioValueAfterInvest, deposit1 , "Portfolio value should still be the same as the initial deposit")
-
 
         // peform deposit for account2
         await usdcp.approve(pool.address, deposit2, { from: account2 })
@@ -148,5 +156,8 @@ contract("Pool", accounts => {
         const portfolioValue2Rounded = Math.round(web3.utils.fromWei(portfolioValue2, 'ether') * 100) / 100
         assert.equal(portfolioValue2Rounded, 200, "Invalid portfolio value for account2")
     })
+
+
+    
 
 })
