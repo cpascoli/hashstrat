@@ -12,31 +12,27 @@ contract("Wallet", accounts => {
 
     beforeEach(async () => {
         usdcp = await USDCP.new(web3.utils.toWei('1000', 'ether'))
-        wallet = await Wallet.new(usdcp.address, {from: defaultAccount});
+        wallet = await Wallet.new(usdcp.address);
     })
 
 
-    it("deposit USDCP tokens into the wallet should increase the account balance", async () => {
-        let balanceBefore = await wallet.getBalance()
-        assert.equal(balanceBefore, 0, "Account should have no balance")
+    it("deposit tokens into the wallet should increase the deposit balance", async () => {
+        let depositsBefore = await wallet.getDeposits()
+        assert.equal(depositsBefore, 0, "Account should have no balance")
 
-        // deposit 1 USDCP 
+        // deposit 1 USD
         let depositAmount =  web3.utils.toWei('1', 'ether')
         await usdcp.approve(wallet.address, depositAmount)
+        await wallet.deposit(depositAmount)
 
-        await wallet.deposit(depositAmount, {
-            from: defaultAccount, gas: 5000000, gasPrice: 500000000
-        })
-
-        let balanceAfter = await wallet.getBalance()
-        assert.equal(balanceAfter, depositAmount , "Account should have expected token balance")
+        let deposits = await wallet.getDeposits()
+        assert.equal(deposits, depositAmount , "Account should have expected token balance")
     })
 
 
-    it("withdraw USDCP tokens from the wallet should reduce the account balance", async () => {
-
-        let balance = await wallet.getBalance()
-        assert.equal(balance, 0, "Account should have no balance")
+    it("withdraw tokens from the wallet should increase the withdrawals balance", async () => {
+        let deposits = await wallet.getDeposits()
+        assert.equal(deposits, 0, "Account should have no deposits")
 
         // deposit 100 USDCP 
         let depositAmount = 100
@@ -47,23 +43,25 @@ contract("Wallet", accounts => {
         let withdrawAmount = 30
         await wallet.withdraw(withdrawAmount)
 
-        let balanceAfter = await wallet.getBalance()
-        assert.equal(balanceAfter, depositAmount - withdrawAmount , "Account should have 70 token after withdraw")
-
+        let withdrawals = await wallet.getWithdrawals()
+        assert.equal(withdrawals, withdrawAmount , "Account shuld have the expected withdrawals balance")
     })
 
-    it("attempting to withdraw more CaleLP tokens than available in balance should throw", async () => {
-        let balance = await wallet.getBalance()
-        assert.equal(balance, 0, "Account should have no balance")
 
-        // deposit 100 USDCP 
+    it("attempting to withdraw more tokens than available in balance should throw", async () => {
+        let deposits = await wallet.getDeposits()
+        assert.equal(deposits, 0, "Account should have no deposits")
+
+        // deposit 100 tokens 
         let depositAmount = 100
         await usdcp.approve(wallet.address, depositAmount)
         await wallet.deposit(depositAmount)
 
+        // attempt to withdraw 101
         await truffleAssert.reverts(
               wallet.withdraw(depositAmount + 1)
         )
     })
+
 
 })

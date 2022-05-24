@@ -6,15 +6,17 @@ import "../node_modules/@openzeppelin/contracts/access/Ownable.sol";
 
 contract Wallet is Ownable {
 
-    event Deposited(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
+    event Deposited(address indexed user, uint amount);
+    event Withdrawn(address indexed user, uint amount);
 
     IERC20 internal depositToken;
 
     uint public totalDeposited = 0;
+    uint public totalWithdrawn = 0;
 
     // depositToken token balances
-    mapping (address => uint256) public balances;
+    mapping (address => uint) public deposits;
+    mapping (address => uint) public withdrawals;
 
     // users that deposited depositToken tokens into their balances
     address[] internal usersArray;
@@ -26,34 +28,38 @@ contract Wallet is Ownable {
     }
 
 
-    function getBalance() external view returns (uint256) {
-        return balances[msg.sender];
+    function getDeposits() external view returns (uint) {
+        return deposits[msg.sender];
+    }
+
+    function getWithdrawals() external view returns (uint) {
+        return withdrawals[msg.sender];
     }
 
 
-    function deposit(uint256 amount) public virtual {
-        require(amount > 0, "Deposit amount should not be 0");
-        require(depositToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance!");
+    function deposit(uint amount) public virtual {
+        require(amount > 0, "Deposit amount is 0");
+        require(depositToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance to deposit");
 
-        balances[msg.sender] = balances[msg.sender] + amount;
-
+        deposits[msg.sender] = deposits[msg.sender] + amount;
+        totalDeposited = totalDeposited + amount;
         // remember addresses that deposited tokens
         if (!users[msg.sender]) {
             users[msg.sender] = true;
             usersArray.push(msg.sender);
         }
-        
         depositToken.transferFrom(msg.sender, address(this), amount);
-
-        totalDeposited = totalDeposited + amount;
 
         emit Deposited(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount) public virtual {
-        require(balances[msg.sender] >= amount, "Insufficient token balance");
+    function withdraw(uint amount) public virtual {
+        require(amount > 0, "Withdraw amount is 0");
+        require(depositToken.balanceOf(address(this)) >= amount, "Withdrawal amount exceeds balance");
 
-        balances[msg.sender] = balances[msg.sender] - amount;
+        withdrawals[msg.sender] = withdrawals[msg.sender] + amount;
+        totalWithdrawn = totalWithdrawn + amount;
+
         depositToken.transfer(msg.sender, amount);
 
         emit Withdrawn(msg.sender, amount);

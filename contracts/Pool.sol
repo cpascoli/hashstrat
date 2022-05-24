@@ -176,12 +176,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint depositTokensSwapped = depositTokensAfterSwap - depositTokens;
 
         // transfer depositTokens to the user
-        uint depositTokenWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;
-        
-        //uint allowance = depositToken.allowance(address(this), msg.sender);
-        depositToken.transfer(msg.sender, depositTokenWithdraw);
-
-        emit Withdraw(amount, lpToBurn, depositTokenWithdraw);
+        uint depositTokenWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;        
+        super.withdraw(depositTokenWithdraw);
     }
 
 
