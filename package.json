@@ -17,7 +17,7 @@
     "migrate:kovan": "npx truffle migrate --network kovan",
     "migrate:kovan:reset": "npx truffle migrate --network kovan --reset",
     "test": "npx truffle test",
-    "verify": "npx truffle run verify Pool TokenSwap USDCP --network kovan"
+    "verify": "npx truffle run verify Pool RebalancingStrategyV1 PoolLPToken PriceCOnsumerV3 --network kovan"
   },
   "repository": {
     "type": "git",
