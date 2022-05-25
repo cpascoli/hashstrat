@@ -8,6 +8,8 @@ const ETH_USD_AGGREGATOR = '0x9326BFA02ADD2366b30bacB125260Af641031331'
 
 module.exports = async (deployer, network, [defaultAccount]) => {
 
+  console.log("deploying PriceConsumerV3 to ", network)
+
   if (!network.startsWith('kovan')) {
     console.log("only for Kovan right now!")
   } else {

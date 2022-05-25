@@ -5,6 +5,8 @@ const DAI = '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa'
 
 module.exports = async (deployer, network, [defaultAccount]) => {
 
+  console.log("deploying RebalancingStrategyV1 to ", network)
+
   if (!network.startsWith('kovan')) {
     console.log("only for Kovan right now!")
   } else {
@@ -13,8 +15,8 @@ module.exports = async (deployer, network, [defaultAccount]) => {
       RebalancingStrategyV1,
       DAI, 
       WETH,
-      60,   // target portfolio 60%/40% 
-      15,   // 15% rebalancing threshold
+      60,   // target portfolio 60% WETH / 40% DAI
+      2,    // 15% seems a good rebalancing threshold but we use 2% for kovan tests
     )
   }
 };

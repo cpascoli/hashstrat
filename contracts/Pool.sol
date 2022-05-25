@@ -225,8 +225,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint256 depositTokenBalanceAfter = depositToken.balanceOf(address(this));
         uint256 investTokenBalanceAfter = investToken.balanceOf(address(this));
 
-        uint256 spent = depositTokenBalanceBefore - depositTokenBalanceAfter;
-        uint256 bought = investTokenBalanceAfter - investTokenBalanceBefore;
+        uint256 spent;
+        uint256 bought;
         string memory swapType;
         
         if (action == StrategyAction.BUY) {
