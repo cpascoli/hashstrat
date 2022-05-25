@@ -11,7 +11,7 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
     IERC20 internal depositToken;
     IERC20 internal investToken;
 
-    uint public maxPriceAge = 60 * 60; // use prices old 1h max
+    uint public maxPriceAge = 6 * 60 * 60; // use prices old 6h max (in Kovan prices are updated every few hours)
     uint public targetInvestPerc;
     uint public rebalancingThreshold;
     address poolAddress;
@@ -26,6 +26,10 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
     function setPoolAddress(address _poolAddress) public onlyOwner {
         require(poolAddress == address(0), "Pool address alreadt set");
         poolAddress = _poolAddress;
+    }
+
+    function setMaxPriceAge(uint secs) public onlyOwner {
+        maxPriceAge = secs;
     }
 
     function name() public override view returns(string memory _) {
