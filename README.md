@@ -13,11 +13,14 @@ The price of WETH/USD is also provided by a Chainlink feed.
 
 NOTE: Deployment scripts can deploy to Kovan only.
 
-## Requirements
 
-- NPM
 
-## Installation
+### Requirements
+
+- NodeJS (v18.0.0)
+
+
+### Installation
 
 1. Install truffle
 
@@ -35,8 +38,33 @@ npm install
 yarn install
 ```
 
-## Test
+
+### Customize Environment vars:
+
+Edit vars in `.env` file:
 
 ```bash
-npm test
+MNEMONIC="<12 memonic words here>"
+RPC_URL="https://kovan.infura.io/v3/<infura_project_id here>"
+ETHERSCAN_API_KEY="<etherscan api key here"
+```
+
+### Test
+
+```bash
+npm run test
+```
+
+
+### Deploy (Kovan)
+
+```bash
+npm run migrate:kovan:
+```
+
+
+### Verify contracts (Kovan)
+
+```bash
+npm run verify
 ```
