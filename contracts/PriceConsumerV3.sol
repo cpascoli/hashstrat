@@ -7,6 +7,7 @@ import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 interface IPriceFeed {
     function getLatestPrice() external view returns (int);
     function getLatestTimestamp() external view returns (uint);
+    function decimals() external view returns (uint);
 }
 
 
@@ -54,4 +55,7 @@ contract PriceConsumerV3 is IPriceFeed {
         return timeStamp;
     }
 
+    function decimals() public override view returns (uint) {
+        return priceFeed.decimals();
+    }
 }

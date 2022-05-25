@@ -43,7 +43,7 @@ contract("Pool", accounts => {
         await lptoken.renounceMinter()
         await uniswap.setPoolAddress(pool.address) //FIXME this is probably unnecessary
         await strategy.setPoolAddress(pool.address)
-        
+
         // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
         await usdcp.transfer(uniswap.address, web3.utils.toWei('10000', 'ether'))
         await weth.transfer(uniswap.address, web3.utils.toWei('1000', 'ether'))
@@ -96,7 +96,6 @@ contract("Pool", accounts => {
     })
 
 
-
     it("withdraw after price increase", async () => {
 
         let balanceBefore = await usdcp.balanceOf(pool.address)
@@ -139,12 +138,9 @@ contract("Pool", accounts => {
 
         const targetInvestPerc = await strategy.targetInvestPerc.call() / 100
         const price2 = await priceFeed.getLatestPrice()
-        const portfolioVal = 160 * (1 - targetInvestPerc) + ((160 * targetInvestPerc) / price1 * price2) // 208 USD
-        const account1Val = portfolioVal * 60 / 160  //  78 USD
-        const account2Val = portfolioVal * 100 / 160 // 130 USD
-
-        console.log("price1", price1.toString(), "price2", price2.toString())
-        console.log("targetInvestPerc", targetInvestPerc.toString(), "portfolioVal", portfolioVal, "account1Val", account1Val, "account2Val", account2Val)
+        const portfolioVal = 160 * (1 - targetInvestPerc) + ((160 * targetInvestPerc) / price1 * price2)
+        const account1Val = portfolioVal * 60 / 160
+        const account2Val = portfolioVal * 100 / 160
 
         assert.equal(fromWei((await pool.portfolioValue({ from: account1 }))), account1Val, "Invalid portfolio value for account1")
         assert.equal(fromWei((await pool.portfolioValue({ from: account2 }))), account2Val, "Invalid portfolio value for account2")
@@ -162,11 +158,9 @@ contract("Pool", accounts => {
         const value2a = await pool.portfolioValue({ from: account2 }) 
         await pool.withdraw(value2a, { from: account2 })
         
-        assert.equal(fromWei((await pool.portfolioValue({ from: account1 }))), 0, "Invalid portfolio value for account1 after withdrawal")
+        assert.equal(round(fromWei((await pool.portfolioValue({ from: account1 }))), 10), 0, "Invalid portfolio value for account1 after withdrawal")
         assert.equal(round(fromWei((await pool.portfolioValue({ from: account2 }))), 10), 0, "Invalid portfolio value for account2 after withdrawal")
         assert.equal(round(fromWei((await pool.totalPortfolioValue())), 10), 0, "Invalid total portfolio value for account2 after withdrawal")
-
     })
-
 
 })

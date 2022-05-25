@@ -18,19 +18,20 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     IERC20 internal depositToken;
     IERC20 internal investToken;
 
-    uint256 public price = 2;
+    uint public price;
 
     event Swapped(string direction, uint256 amountIn, uint256 amountOut, uint256 price);
 
     constructor(address _depositTokenAddress, address _investTokenAddress) public  {
          depositToken = IERC20(_depositTokenAddress);
          investToken = IERC20(_investTokenAddress);
+         price = 2 * uint(10)**8;
     }
 
 
     // Set the price used for the investTokens/depositTokens swap
     function setPrice(uint _price) external {
-        price = _price;
+        price = _price * uint(10)**this.decimals();
     }
 
     // Set the poolAddress (probably reduntant)
@@ -44,7 +45,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     function getAmountsOut(uint amountIn, address[] calldata /* path */) external override view returns (uint[] memory amounts) {
         uint[] memory amountOutMins = new uint[](3);
         // amountOutMins[2] = 1;
-        amountOutMins[2] = amountIn / price;
+        amountOutMins[2] = amountIn / price / this.decimals();
 
         return amountOutMins;
     }
@@ -62,7 +63,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
         if (path[0] == address(depositToken)) {
 
             // swap USD => ETH
-            uint amount = amountIn / price;
+            uint amount = amountIn * this.decimals() / price;
             depositToken.transferFrom(poolAddress, address(this), amountIn);
 
             require(investToken.balanceOf(address(this)) >= amount, "Not enough ETH in the pool");
@@ -75,7 +76,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
             // swap ETH => USD
             investToken.transferFrom(poolAddress, address(this), amountIn);
 
-            uint amount = amountIn * price;
+            uint amount = amountIn * price / this.decimals();
             require(depositToken.balanceOf(address(this)) >= amount, "Not enough USD in the pool");
             depositToken.transfer(to, amount);
 
@@ -101,7 +102,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
 
     function decimals() external override view  returns (uint8) {
-        return 18;
+        return 8;
     }
 
     function description() external override view returns (string memory) {
