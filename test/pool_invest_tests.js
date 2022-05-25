@@ -76,7 +76,7 @@ contract("Pool", accounts => {
 
         // calculate expected token balances
         const targetInvestPerc = await strategy.targetInvestPerc.call()
-        const price = await priceFeed.getLatestPrice()
+        const price = (await priceFeed.getLatestPrice()) / (await priceFeed.decimals())
         const depositTokensExpected = fromWei(depositAmount) * (100 - targetInvestPerc) / 100
         const invetTokensExpected = (fromWei(depositAmount) - depositTokensExpected) / price
 
@@ -139,13 +139,10 @@ contract("Pool", accounts => {
 
          // portfolio % for the 2 accounts should still be 33.33% 66.66%
         const portfolioPercentage1after = await pool.portfolioPercentage({ from: account1 }) * 100 / precision // (8 digits precision)
-        assert.equal(round(portfolioPercentage1), 33.33)
+        assert.equal(round(portfolioPercentage1after), 33.33)
 
         const portfolioPercentage2after = await pool.portfolioPercentage({ from: account2 }) * 100 / precision // (8 digits precision)
-        assert.equal(round(portfolioPercentage2), 66.67)
-
-        const tokenABalance = await usdcp.balanceOf(pool.address)
-        const tokenBBalance = await weth.balanceOf(pool.address)
+        assert.equal(round(portfolioPercentage2after), 66.67)
 
         // portfolio value for account1 and account2
         const portfolioValue1 = await pool.portfolioValue({ from: account1 })
