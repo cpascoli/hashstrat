@@ -68,3 +68,10 @@ npm run migrate:kovan:
 ```bash
 npm run verify
 ```
+
+
+## Query the user portfolio data (Kovan)
+
+```bash
+npm run portfolio-value:kovan
+```
