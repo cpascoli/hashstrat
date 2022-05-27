@@ -31,7 +31,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     * Use an interval in seconds and a timestamp to slow execution of Upkeep
     */
     uint public immutable interval;
-    uint public immutable priceFeedDecimals;
+   
     uint public lastTimeStamp;
     uint public counter;
 
@@ -40,6 +40,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     PoolLPToken lpToken;
     IStrategy strategy;
 
+    uint public immutable priceFeedPrecision;
     uint immutable portFolioPercentagePrecision = 10**18; // 8 digit precision for portfolio % calculations
     uint immutable lpPrecision = 10**18;
     uint immutable public initialLPAllocation = 100 * 10**18;
@@ -62,7 +63,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         interval = _updateInterval;
         lastTimeStamp = block.timestamp;
-        priceFeedDecimals = priceFeed.decimals();
+        priceFeedPrecision = 10 ** priceFeed.decimals();
     }
 
     // the LP tokens allocations to the user
@@ -93,7 +94,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         require (investTokenPrice >= 0, "Invest token price can't be negative");
 
         // portoflio value is the sum of deposit token value and invest token value
-        uint value = depositTokens + (investTokens * uint(investTokenPrice) / priceFeedDecimals);
+        uint value = depositTokens + (investTokens * uint(investTokenPrice) / priceFeedPrecision);
 
         return value;
     }
