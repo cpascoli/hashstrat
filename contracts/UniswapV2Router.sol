@@ -19,19 +19,20 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     IERC20 internal investToken;
 
     uint public price;
+    uint pricePrecision = 10**8;
 
     event Swapped(string direction, uint256 amountIn, uint256 amountOut, uint256 price);
 
     constructor(address _depositTokenAddress, address _investTokenAddress) public  {
          depositToken = IERC20(_depositTokenAddress);
          investToken = IERC20(_investTokenAddress);
-         price = 2 * uint(10)**8;
+         price = 2 * pricePrecision;
     }
 
 
     // Set the price used for the investTokens/depositTokens swap
     function setPrice(uint _price) external {
-        price = _price * uint(10)**this.decimals();
+        price = _price * pricePrecision;
     }
 
     // Set the poolAddress (probably reduntant)
@@ -45,7 +46,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     function getAmountsOut(uint amountIn, address[] calldata /* path */) external override view returns (uint[] memory amounts) {
         uint[] memory amountOutMins = new uint[](3);
         // amountOutMins[2] = 1;
-        amountOutMins[2] = amountIn / price / this.decimals();
+        amountOutMins[2] = amountIn / price / pricePrecision;
 
         return amountOutMins;
     }
@@ -63,7 +64,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
         if (path[0] == address(depositToken)) {
 
             // swap USD => ETH
-            uint amount = amountIn * this.decimals() / price;
+            uint amount = amountIn * pricePrecision / price;
             depositToken.transferFrom(poolAddress, address(this), amountIn);
 
             require(investToken.balanceOf(address(this)) >= amount, "Not enough ETH in the pool");
@@ -76,7 +77,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
             // swap ETH => USD
             investToken.transferFrom(poolAddress, address(this), amountIn);
 
-            uint amount = amountIn * price / this.decimals();
+            uint amount = amountIn * price / pricePrecision;
             require(depositToken.balanceOf(address(this)) >= amount, "Not enough USD in the pool");
             depositToken.transfer(to, amount);
 

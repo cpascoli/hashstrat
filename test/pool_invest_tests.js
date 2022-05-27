@@ -76,7 +76,7 @@ contract("Pool", accounts => {
 
         // calculate expected token balances
         const targetInvestPerc = await strategy.targetInvestPerc.call()
-        const price = (await priceFeed.getLatestPrice()) / (await priceFeed.decimals())
+        const price = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
         const depositTokensExpected = fromWei(depositAmount) * (100 - targetInvestPerc) / 100
         const invetTokensExpected = (fromWei(depositAmount) - depositTokensExpected) / price
 
@@ -107,8 +107,8 @@ contract("Pool", accounts => {
         // swap tokens
         await pool.invest()
 
-        const portfolioValueAfterInvest = await pool.totalPortfolioValue() 
-        assert.equal(portfolioValueAfterInvest, deposit1 , "Portfolio value should still be the same as the initial deposit")
+        const portfolioValueAfterInvest = await pool.totalPortfolioValue()
+        assert.equal(fromWei(portfolioValueAfterInvest), fromWei(deposit1), "Portfolio value should still be the same as the initial deposit")
 
         // peform deposit for account2
         await usdcp.approve(pool.address, deposit2, { from: account2 })
@@ -154,7 +154,5 @@ contract("Pool", accounts => {
         assert.equal(portfolioValue2Rounded, 200, "Invalid portfolio value for account2")
     })
 
-
-    
 
 })
