@@ -2,14 +2,14 @@
 
 A Pool contract that implements a simple crypto investment fund.
 
-Users depoist DAI into the pool and receive PoolLP tokens back that represent their share in the pool.
-New PoolLP tokens get minted when DAI are deposited into the pool and get burt when DAI are withdrawn from the pool.
-The Pool can spend some of its DAI to buy WETH on UniswapV2, or can sell some WETH for DAI.
-The Pool uses a rebalancing strategy to target a 60% / 40% split allocation of WETH and DAI.
-This means that the value of WETH (in DAI) aims to be about 60% of the overall value of the Pool (in DAI).
-The strategy waits for the value of WETH in the Pool to go above/below the 60% target by a preset thereshold (e.g 15%) before rebalancing.
-The Pool uses Chainlink keepers to automate the Pool rebalaning operations.
-The price of WETH/USD is also provided by a Chainlink feed.
+This is the functionality implemented so far:
+- Users depoist DAI into the pool and receive PoolLP tokens back that represent their share in the pool.
+- New PoolLP tokens get minted when DAI are deposited into the pool and get burt when DAI are withdrawn from the pool.
+- The Pool can spend some of its DAI to buy WETH on UniswapV2, or can sell some WETH for DAI.
+- The Pool uses a rebalancing strategy to target a 60% / 40% split allocation of WETH and DAI. This means that the value of WETH (in DAI) aims to be about 60% of the overall value of the Pool (in DAI).
+- The strategy waits for the value of WETH in the Pool to go above/below the 60% target by a preset thereshold (e.g 15%) before rebalancing.
+- The Pool uses Chainlink keepers to automate the Pool rebalaning operations.
+- The price of WETH/USD is also provided by a Chainlink feed. This price feed is used to determine the value of the WETH in the fund and to trigger the rebalance process.
 
 NOTE: Deployment scripts can deploy to Kovan only.
 
@@ -75,3 +75,20 @@ npm run verify
 ```bash
 npm run portfolio-value:kovan
 ```
+
+## HowTo use the Pool Contract (Kovan)
+
+1. Approve Pool contract address to spend DAI 
+- call `approve` function on [DAI contract](https://kovan.etherscan.io/address/0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa#writeContract)
+
+2. Deposit DAI into the pool:
+- call `deposit` function on [Pool contract](https://kovan.etherscan.io/address/0x1d97C5B5241C7E9a6bDFf2faC5b6EA95B33E1275#writeContract)
+
+3. Add PoolLP token info into Metamask (e.g use PoolLP contract address `0xCA9097759A8Fc3409e170c5e20Fc2e873A629b65`)
+
+4. Wait for [Chainlink Keeper](https://keepers.chain.link/kovan/3387) to trigger a portfolio rebalance 
+ - alternatively you can call the `invest` function on the [Pool contract](https://kovan.etherscan.io/address/0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa#writeContract)
+ 
+ Execution of the `invest` function on the Pool contract can trigger a rebalance operation (aka a swap between DAI and WETH or viceversa) as demostrated in [this transaction](https://kovan.etherscan.io/tx/0x7cd5b8f334d48121713d6fe11280e164a78fafee0909648dd9254482d8e02a0f).
+
+ 

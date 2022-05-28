@@ -9,13 +9,15 @@ const Pool = artifacts.require('Pool')
 module.exports = async callback => {
   const pool = await Pool.deployed()
 
-  const portfolioValue = (await pool.portfolioValue()).toString()
-  console.log("depositTokenBalance:" , (await pool.depositTokenBalance()).toString() )
-  console.log("investTokenBalance:" , (await pool.investTokenBalance()).toString() )
-  console.log("latestPrice:" , (await pool.latestPrice()).toString() )
-  console.log("portfolioValue:", portfolioValue)
-  console.log("totalPortfolioValue: ", (await pool.totalPortfolioValue()).toString())
-  console.log("portfolioPercentage: ", (await pool.portfolioPercentage() * 100 / 10**18 ).toString())
+  const portfolioValue = await pool.portfolioValue()
+  console.log("--------- POOL STATS ---------")
+  console.log("Pool DAI balance:" , (await pool.depositTokenBalance() / 10**18 ).toString())
+  console.log("Pool WETH balance:" , (await pool.investTokenBalance() / 10**18).toString())
+  console.log("Latest WETH price (chainlink feed):" , (await pool.latestPrice() / 10**8).toString())
+  console.log("Total portfolio Value:", (await pool.totalPortfolioValue() / 10**18).toString())
+  console.log("--------- USER STATS ---------")
+  console.log("User portfolio value:", portfolioValue / 10**18)
+  console.log("User portfolio percentage:", (await pool.portfolioPercentage() * 100 / 10**18 ).toString()+"%")
   
-  callback(portfolioValue)
+  callback()
 }

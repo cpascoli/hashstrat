@@ -30,6 +30,9 @@ module.exports = {
         return new HDWalletProvider(mnemonic, url)
       },
       network_id: '42',
+      gas: 8000000,
+      networkCheckTimeout: 300000,
+      timeoutBlocks: 100,
       skipDryRun: true
     },
   },
