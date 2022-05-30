@@ -4,7 +4,8 @@ require('dotenv').config()
 const mnemonic = process.env.MNEMONIC
 const url = process.env.RPC_URL
 const etherscan_api_key = process.env.ETHERSCAN_API_KEY
-
+const polygonscan_api_key = process.env.POLYGONSCAN_API_KEY
+const bscscan_api_key = process.env.BSSCAN_API_KEY
 
 module.exports = {
   networks: {
@@ -25,7 +26,7 @@ module.exports = {
       timeoutBlocks: 200,
       skipDryRun: true
     },
-    matic: {
+    matic_testnet: {
       provider: () => new HDWalletProvider(mnemonic, `https://rpc-mumbai.maticvigil.com`),
       network_id: 80001,
       confirmations: 2,
@@ -40,6 +41,14 @@ module.exports = {
       timeoutBlocks: 100,
       skipDryRun: true
     },
+    matic: {
+      provider: () => new HDWalletProvider(mnemonic, url),
+      network_id: 137,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      gasPrice: 50000000000,
+      skipDryRun: false
+    },
   },
   compilers: {
     solc: {
@@ -48,6 +57,8 @@ module.exports = {
   },
   plugins: ['truffle-plugin-verify'],
   api_keys: {
-    etherscan: etherscan_api_key
+    etherscan: etherscan_api_key,
+    polygonscan: polygonscan_api_key,
+    bscscan: bscscan_api_key,
   }
 }
