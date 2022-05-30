@@ -12,4 +12,6 @@ interface IUniswapV2Router {
         address to,  //this is the address we are going to send the output tokens to
         uint deadline //the last time that the trade is valid for
     ) external returns (uint[] memory amounts);
+
+    function WETH() external returns (address addr);
 }

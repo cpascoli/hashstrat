@@ -13,17 +13,10 @@ import "./strategies/IStrategy.sol";
 
 contract Pool is Wallet, KeeperCompatibleInterface  {
 
-    //address private constant UNISWAP_V2_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-
-    address private constant WETH = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
-    // address private constant DAI = 0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa;
-
-
     event Swapped(string swapType, uint amount, uint spent, uint bought);
     event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
-    event Withdraw(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
+    event Withdrawn(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
 
-    event PriceFeed(int price);
 
     IERC20 internal investToken;
 
@@ -43,8 +36,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     uint public immutable priceFeedPrecision;
     uint immutable portFolioPercentagePrecision = 10**18; // 8 digit precision for portfolio % calculations
     uint immutable lpPrecision = 10**18;
-    uint immutable public initialLPAllocation = 100 * 10**18;
-
+    address immutable UNISWAPV2_WETH;
 
     constructor(
         address _uniswapV2RouterAddress, 
@@ -61,6 +53,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         priceFeed = IPriceFeed(_priceFeedAddress);
         strategy = IStrategy(_strategyAddress);
 
+        UNISWAPV2_WETH = uniswapV2Router.WETH();
         interval = _updateInterval;
         lastTimeStamp = block.timestamp;
         priceFeedPrecision = 10 ** priceFeed.decimals();
@@ -74,6 +67,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
     function portfolioPercentage() public view returns (uint) {
         // the % of the portfolio of the user (with 'portFolioPercentagePrecision' digits precision)
+        if (lpToken.totalSupply() == 0) return 0;
+
         uint portFolioPercentage = portFolioPercentagePrecision * lpToken.balanceOf(msg.sender) / lpToken.totalSupply();
         return portFolioPercentage;
     }
@@ -119,9 +114,9 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         ///// first deposit => allocate the inital LP tokens amount to the user
         if (lpToken.totalSupply() == 0) {
-            lpToken.mint(msg.sender, initialLPAllocation);
+            lpToken.mint(msg.sender, amount);
 
-            emit Deposited(amount, initialLPAllocation, initialLPAllocation);
+            emit Deposited(amount, amount, amount);
             return;
         }
 
@@ -129,6 +124,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         // calculate portfolio % of the deposit (using lpPrecision digits precision)
         uint portFolioValue = totalPortfolioValue();
+        require(portFolioValue > 0, "Portfolio value is 0");
         uint portFolioPercentage = lpPrecision * amount / portFolioValue;
 
         // calculate the amount of LP tokens for the deposit so that they represent 
@@ -186,6 +182,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         // transfer depositTokens to the user
         uint depositTokenWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;        
         super.withdraw(depositTokenWithdraw);
+
+        emit Withdrawn(amount, lpToBurn, lpToken.totalSupply());
     }
 
 
@@ -259,14 +257,14 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         //this path array will have 3 addresses [tokenIn, WETH, tokenOut]
         //the if statement below takes into account if token in or token out is WETH.  then the path is only 2 addresses
         address[] memory path;
-        if (_tokenIn == WETH || _tokenOut == WETH) {
+        if (_tokenIn == UNISWAPV2_WETH || _tokenOut == UNISWAPV2_WETH) {
             path = new address[](2);
             path[0] = _tokenIn;
             path[1] = _tokenOut;
         } else {
             path = new address[](3);
             path[0] = _tokenIn;
-            path[1] = WETH;
+            path[1] = UNISWAPV2_WETH;
             path[2] = _tokenOut;
         }
         //then we will call swapExactTokensForTokens
@@ -289,14 +287,14 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         //this path array will have 3 addresses [tokenIn, WETH, tokenOut]
         //the if statement below takes into account if token in or token out is WETH.  then the path is only 2 addresses
         address[] memory path;
-        if (_tokenIn == WETH || _tokenOut == WETH) {
+        if (_tokenIn == UNISWAPV2_WETH || _tokenOut == UNISWAPV2_WETH) {
             path = new address[](2);
             path[0] = _tokenIn;
             path[1] = _tokenOut;
         } else {
             path = new address[](3);
             path[0] = _tokenIn;
-            path[1] = WETH;
+            path[1] = UNISWAPV2_WETH;
             path[2] = _tokenOut;
         }
 

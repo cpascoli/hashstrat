@@ -42,7 +42,12 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
 
     //// UniswapV2Router interface implementation
-     
+
+    function WETH() external override returns (address addr) {
+        // assume the WETH intermediary token for token-to-token swaps is the investToken address
+        return address(investToken);
+    }
+
     function getAmountsOut(uint amountIn, address[] calldata /* path */) external override view returns (uint[] memory amounts) {
         uint[] memory amountOutMins = new uint[](3);
         // amountOutMins[2] = 1;
@@ -53,10 +58,10 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
     function swapExactTokensForTokens(
         uint amountIn, //amount of tokens we are sending in
-        uint amountOutMin, //the minimum amount of tokens we want out of the trade
+        uint /*amountOutMin*/, //the minimum amount of tokens we want out of the trade
         address[] calldata path,  //list of token addresses we are going to trade in.  this is necessary to calculate amounts
         address to,  //this is the address we are going to send the output tokens to
-        uint deadline //the last time that the trade is valid for
+        uint /*deadline*/ //the last time that the trade is valid for
     )  external override returns (uint[] memory amounts) {
 
         require(poolAddress != address(0), "poolAddress not set");
@@ -118,7 +123,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     // getRoundData and latestRoundData should both raise "No data present"
     // if they do not have data to report, instead of returning unset values
     // which could be misinterpreted as actual reported values.
-    function getRoundData(uint80 _roundId) override external view returns (
+    function getRoundData(uint80 /*_roundId */) external override view returns (
         uint80 roundId,
         int256 answer,
         uint256 startedAt,
@@ -129,7 +134,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     }
 
 
-    function concat(string memory _x, string memory _y) pure internal returns (string memory) {
+    function concat(string memory _x, string memory _y) internal pure returns (string memory) {
         bytes memory _xBytes = bytes(_x);
         bytes memory _yBytes = bytes(_y);
 
@@ -139,11 +144,11 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
         uint i;
         uint j;
 
-        for(i=0;i<_xBytes.length;i++) {
+        for(i = 0; i<_xBytes.length; i++) {
             _newValue[j++] = _xBytes[i];
         }
 
-        for(i=0;i<_yBytes.length;i++) {
+        for(i = 0; i<_yBytes.length; i++) {
             _newValue[j++] = _yBytes[i];
         }
 
