@@ -92,7 +92,7 @@ contract("Pool", accounts => {
         assert.equal(fromWei((await pool.totalPortfolioValue()) , 'ether'), 140, "Invalid total portfolio value")
         assert.equal(round((await pool.portfolioPercentage({ from: account1 })) * 100 / precision), 28.57, "Invalid account1 portfolio % before")
         assert.equal(round((await pool.portfolioPercentage({ from: account2 })) * 100 / precision), 71.43, "Invalid account2 portfolio % before")
-        
+
     })
 
 
@@ -157,7 +157,7 @@ contract("Pool", accounts => {
         // account2 withdraws all 
         const value2a = await pool.portfolioValue({ from: account2 }) 
         await pool.withdraw(value2a, { from: account2 })
-        
+
         assert.equal(round(fromWei((await pool.portfolioValue({ from: account1 }))), 10), 0, "Invalid portfolio value for account1 after withdrawal")
         assert.equal(round(fromWei((await pool.portfolioValue({ from: account2 }))), 10), 0, "Invalid portfolio value for account2 after withdrawal")
         assert.equal(round(fromWei((await pool.totalPortfolioValue())), 10), 0, "Invalid total portfolio value for account2 after withdrawal")

@@ -11,5 +11,4 @@ module.exports = async (deployer, network, [defaultAccount]) => {
   } else {
     deployer.deploy(Wallet, DAI);
   }
-
 };

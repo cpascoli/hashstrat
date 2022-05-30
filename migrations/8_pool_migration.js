@@ -4,25 +4,35 @@ const PriceConsumerV3 = artifacts.require("PriceConsumerV3");
 const PoolLPToken = artifacts.require("PoolLPToken");
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
-const UNISWAP_V2_ROUTER = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+const UNISWAP_V2_ROUTER_KOVAN = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+const UNISWAP_V2_ROUTER_MATIC = '0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25'
 const WETH = '0xd0A1E359811322d97991E03f863a0C30C2cF029C'
 const DAI = '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa'
 
+// Kovan
+const DAI_KOVAN = '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa'
+const WETH_KOVAN = '0xd0A1E359811322d97991E03f863a0C30C2cF029C'
+
+// MATIC
+const USDC_MATIC = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+const WETH_MATIC = '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619'
+
+
+
 module.exports = async (deployer, network, [defaultAccount]) => {
 
-  if (!network.startsWith('kovan')) {
-    console.log("only for Kovan right now!")
-  } else {
+  console.log("deploying Pool to ", network)
 
-    console.log("deploying Pool to ", network)
+  if (network.startsWith('matic')) {
+
     const lptoken = await PoolLPToken.deployed()
     const strategy = await RebalancingStrategyV1.deployed()
 
     await deployer.deploy(Pool, 
-      UNISWAP_V2_ROUTER, 
+      UNISWAP_V2_ROUTER_MATIC, 
       PriceConsumerV3.address, 
-      DAI, 
-      WETH, 
+      USDC_MATIC, 
+      WETH_MATIC, 
       lptoken.address, 
       strategy.address,
       24 * 60 * 60 // run strategy once a day
@@ -34,5 +44,30 @@ module.exports = async (deployer, network, [defaultAccount]) => {
     await strategy.setPoolAddress(pool.address)
 
     console.log("Pool is Minter: ", (await lptoken.isMinter(pool.address)) )
+
+  } else if (network.startsWith('kovan')) {
+
+    const lptoken = await PoolLPToken.deployed()
+    const strategy = await RebalancingStrategyV1.deployed()
+
+    await deployer.deploy(Pool, 
+      UNISWAP_V2_ROUTER_KOVAN, 
+      PriceConsumerV3.address, 
+      DAI_KOVAN, 
+      WETH_KOVAN, 
+      lptoken.address, 
+      strategy.address,
+      24 * 60 * 60 // run strategy once a day
+    )
+
+    const pool = await Pool.deployed()
+    await lptoken.addMinter(pool.address)
+    await lptoken.renounceMinter()
+    await strategy.setPoolAddress(pool.address)
+
+    console.log("Pool is Minter: ", (await lptoken.isMinter(pool.address)) )
+  } else {
+    console.log("only for Kovan & Polygon (MATIC) right now!")
   }
+
 };

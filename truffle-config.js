@@ -25,10 +25,15 @@ module.exports = {
       timeoutBlocks: 200,
       skipDryRun: true
     },
+    matic: {
+      provider: () => new HDWalletProvider(mnemonic, `https://rpc-mumbai.maticvigil.com`),
+      network_id: 80001,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true
+    },
     kovan: {
-      provider: () => {
-        return new HDWalletProvider(mnemonic, url)
-      },
+      provider: () => new HDWalletProvider(mnemonic, url),
       network_id: '42',
       gas: 8000000,
       networkCheckTimeout: 300000,
