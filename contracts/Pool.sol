@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.6;
 
-import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/KeeperCompatibleInterface.sol";
+import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./Wallet.sol";
 import "./IUniswapV2Router.sol";
@@ -13,10 +13,9 @@ import "./strategies/IStrategy.sol";
 
 contract Pool is Wallet, KeeperCompatibleInterface  {
 
-    event Swapped(string swapType, uint amount, uint spent, uint bought);
+    event Swapped(string swapType, uint amount, uint spent, uint bought, uint slippage);
     event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
     event Withdrawn(uint amountWithdrawn, uint lpWithdrawn, uint lpRemaining);
-
 
     IERC20 internal investToken;
 
@@ -37,6 +36,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     uint immutable portFolioPercentagePrecision = 10**18; // 18 digit precision for portfolio % calculations
     uint immutable lpPrecision;
     address immutable UNISWAPV2_WETH;
+
+    uint slippageThereshold = 500; // allow for 5% slippage on swaps (aka should receive at least 95% of the expected token amount)
 
     constructor(
         address _uniswapV2RouterAddress, 
@@ -206,11 +207,42 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     }
 
 
-
+    function setSlippageThereshold(uint _slippage) public onlyOwner {
+        slippageThereshold = _slippage;
+    }
 
 
 
     /// INVESTMENT STRATEGY
+
+    //  Compute the slippage for a trade. The returned percentage is returned with 4 digits decimals
+    //  E.g: For a 5% slippage below the expected amount 500 is returned
+    function slippagePercentage(address tokenIn, address tokenOut, uint amountIn, uint amountMin) public view returns (uint) {
+        
+        require(priceFeed.getLatestPrice() > 0, "Invalid price");
+
+        uint price = uint(priceFeed.getLatestPrice());
+        uint pricePrecision = 10 ** uint(priceFeed.decimals());
+
+        uint amountExpected;
+
+        // swap USD => ETH
+        if (tokenIn == address(depositToken) && tokenOut == address(investToken)) {
+            amountExpected = amountIn * pricePrecision / price;
+        } 
+
+        // swap ETH => USD
+        if (tokenIn == address(investToken) && tokenOut == address(depositToken)) {
+            amountExpected = amountIn * price / pricePrecision;
+        }
+
+        require(amountExpected > 0, "Invalid amount expected");
+
+        if (amountMin >= amountExpected) return 0;
+
+        return 10000 - (10000 * amountMin / amountExpected); // e.g 10000 - 9500 = 500  (5% slippage)
+    }
+
 
     function invest() public {
 
@@ -219,7 +251,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         if (action == StrategyAction.NONE || amountIn == 0) {
             // No rebalancing needed
-            emit Swapped("None", 0, 0, 0);
+            emit Swapped("None", 0, 0, 0, 0);
             return;
         }
 
@@ -240,7 +272,11 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint256 investTokenBalanceBefore = investToken.balanceOf(address(this));
         uint256 amountMin = getAmountOutMin(tokenIn, tokenOut, amountIn);
 
-        //TODO compare portolio value before and after swap and revert if portfolio value drops below a min allowed slippage
+        // ensure slippage is not too much (e.g. <= 500 for a 5% slippage)
+        uint slippage = slippagePercentage(tokenIn, tokenOut, amountIn, amountMin);
+        if (slippage > slippageThereshold) {
+            revert("Slippage thereshold exceeded");
+        }
 
         // perform swap
         swap(tokenIn, tokenOut, amountIn, amountMin, address(this));
@@ -263,8 +299,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
             bought = depositTokenBalanceAfter - depositTokenBalanceBefore;
         }
 
-        emit Swapped(swapType, amountIn, spent, bought);
-        
+        emit Swapped(swapType, amountIn, spent, bought, slippage);
     }
 
 

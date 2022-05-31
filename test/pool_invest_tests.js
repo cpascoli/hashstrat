@@ -85,6 +85,64 @@ contract("Pool", accounts => {
     })
 
 
+
+    it("Rebalance portfoio with some slippage", async () => {
+
+         // set  5% max slippage and 3% on the trate
+        await pool.setSlippageThereshold(500)
+        await uniswap.setSlippage(400);
+
+        // deposit 100 USDCP 
+        let depositAmount = toWei('100')
+        await usdcp.approve(pool.address, depositAmount)
+        await pool.deposit(depositAmount)
+
+        let balanceUsdcBefore = await usdcp.balanceOf(pool.address)
+        assert.equal(balanceUsdcBefore, depositAmount , "Pool should have the expected deposit tokens")
+
+        let balanceWethBefore = await weth.balanceOf(pool.address)
+        assert.equal(balanceWethBefore, 0, "Pool should have no invested tokens")
+
+        // rebalance portfolio to 60%/40%
+        await pool.invest()
+
+        let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
+        let balanceWethAfter = await weth.balanceOf(pool.address)
+
+        // calculate expected token balances, including 4% slippage
+        const targetInvestPerc = await strategy.targetInvestPerc.call()
+        const price = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        const depositTokensExpected = fromWei(depositAmount) * (100 - targetInvestPerc) / 100
+        const invetTokensExpected = round( (fromWei(depositAmount) - depositTokensExpected) / price * 0.96 , 10)
+
+        assert.equal(fromWei(balanceUsdcAfter), depositTokensExpected, "Invalid deposit balance after invest")
+        assert.equal(fromWei(balanceWethAfter), invetTokensExpected, "Invalid invest balance after invest")
+    })
+
+
+    it("Rebalance portfolio with slippage higher than allowed should throw", async () => {
+ 
+         // set 5% max slippage and 5.01% slippage
+         await pool.setSlippageThereshold(500)
+         await uniswap.setSlippage(501);
+ 
+         // deposit 100 USDCP 
+         let depositAmount = toWei('100')
+         await usdcp.approve(pool.address, depositAmount)
+         await pool.deposit(depositAmount)
+ 
+         let balanceUsdcBefore = await usdcp.balanceOf(pool.address)
+         assert.equal(balanceUsdcBefore, depositAmount , "Pool should have the expected deposit tokens")
+ 
+         let balanceWethBefore = await weth.balanceOf(pool.address)
+         assert.equal(balanceWethBefore, 0, "Pool should have no invested tokens")
+
+        await truffleAssert.reverts(
+            pool.invest({ gas: 1000000 })
+        )
+    })
+
+
     it("Portfolio allocation and portfolio value for 2 accounts", async () => {
 
         let balanceBefore = await usdcp.balanceOf(pool.address)
@@ -153,6 +211,5 @@ contract("Pool", accounts => {
         const portfolioValue2Rounded = Math.round(web3.utils.fromWei(portfolioValue2, 'ether') * 100) / 100
         assert.equal(portfolioValue2Rounded, 200, "Invalid portfolio value for account2")
     })
-
 
 })

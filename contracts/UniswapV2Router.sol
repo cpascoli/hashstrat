@@ -20,8 +20,11 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
     uint public price;
     uint pricePrecision = 10**8;
+    uint slippage = 0; // 5% slippage
 
-    event Swapped(string direction, uint256 amountIn, uint256 amountOut, uint256 price);
+    event Swapped(string direction, uint256 amountIn, uint256 amountOut, uint256 price, uint slippage);
+    event GetAmountsOutInfo(uint amountIn, address path, uint amount, uint price);
+
 
     constructor(address _depositTokenAddress, address _investTokenAddress) public  {
          depositToken = IERC20(_depositTokenAddress);
@@ -33,6 +36,10 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     // Set the price used for the investTokens/depositTokens swap
     function setPrice(uint _price) external {
         price = _price * pricePrecision;
+    }
+
+    function setSlippage(uint _slippage) external {
+        slippage = _slippage;
     }
 
     // Set the poolAddress (probably reduntant)
@@ -48,11 +55,19 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
         return address(investToken);
     }
 
-    function getAmountsOut(uint amountIn, address[] calldata /* path */) external override view returns (uint[] memory amounts) {
-        uint[] memory amountOutMins = new uint[](3);
-        // amountOutMins[2] = 1;
-        amountOutMins[2] = amountIn / price / pricePrecision;
+    function getAmountsOut(uint amountIn, address[] calldata path) external override view returns (uint[] memory amounts) {
+        uint[] memory amountOutMins = new uint[](path.length);
+        uint amount;
 
+        if (path[0] == address(depositToken)) {
+            // swap USD => ETH
+            amount = amountIn * pricePrecision / price * (10000 - slippage) / 10000;
+        } else if (path[0] == address(investToken)) {
+            // swap ETH => USD
+            amount = amountIn * price / pricePrecision * (10000 - slippage) / 10000;
+        }
+
+        amountOutMins[path.length-1] = amount;
         return amountOutMins;
     }
 
@@ -66,27 +81,28 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
         require(poolAddress != address(0), "poolAddress not set");
 
+        
         if (path[0] == address(depositToken)) {
 
             // swap USD => ETH
-            uint amount = amountIn * pricePrecision / price;
             depositToken.transferFrom(poolAddress, address(this), amountIn);
 
+            uint amount = amountIn * pricePrecision / price * (10000 - uint(slippage)) / 10000;
             require(investToken.balanceOf(address(this)) >= amount, "Not enough ETH in the pool");
             investToken.transfer(to, amount);
 
-            emit Swapped("USD -> ETH", amountIn, amount, price);
+            emit Swapped("USD -> ETH", amountIn, amount, price, slippage);
 
         } else if (path[0] == address(investToken)) {
 
             // swap ETH => USD
             investToken.transferFrom(poolAddress, address(this), amountIn);
 
-            uint amount = amountIn * price / pricePrecision;
+            uint amount = amountIn * price / pricePrecision * (10000 - uint(slippage)) / 10000;
             require(depositToken.balanceOf(address(this)) >= amount, "Not enough USD in the pool");
             depositToken.transfer(to, amount);
 
-            emit Swapped("ETH -> USD", amountIn, amount, price);
+            emit Swapped("ETH -> USD", amountIn, amount, price, slippage);
         }
 
         return new uint[](0);
