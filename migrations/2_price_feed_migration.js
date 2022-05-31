@@ -13,12 +13,9 @@ module.exports = async (deployer, network, [defaultAccount]) => {
 
   if (network.startsWith('matic')) {
     deployer.deploy(PriceConsumerV3, ETH_USD_AGGREGATOR_MATIC);
-
   } else if (network.startsWith('kovan')) {
     deployer.deploy(PriceConsumerV3, ETH_USD_AGGREGATOR_KOVAN);
-    
   } else {
     console.log("only for Kovan & Polygon (MATIC) right now!")
   }
-
 };
