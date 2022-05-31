@@ -34,7 +34,7 @@ contract("Pool", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
-        lptoken = await PoolLPToken.new()
+        lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 18)
         strategy = await RebalancingStrategyV1.new(usdcp.address, weth.address, 60, 20)
         pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
         

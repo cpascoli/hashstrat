@@ -12,7 +12,9 @@ import "./MinterRole.sol";
 
 contract PoolLPToken is ERC20, MinterRole {
 
-    constructor () public ERC20("Pool LP Token", "PoolLP") {}
+    constructor (string memory _name, string memory _symbol, uint8 _decimals) public ERC20(_name, _symbol) {
+        _setupDecimals(_decimals);
+    }
 
     function mint(address to, uint256 value) public onlyMinter returns (bool) {
         _mint(to, value);

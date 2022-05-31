@@ -32,7 +32,7 @@ contract("Pool", accounts => {
     beforeEach(async () => {
         usdcp = await USDCP.new(toWei('100000'))
         weth = await WETH.new(toWei('1000'))
-        lptoken = await PoolLPToken.new()
+        lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 18)
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed

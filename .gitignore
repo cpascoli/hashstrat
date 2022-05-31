@@ -3,4 +3,7 @@ node_modules/
 build/
 package-lock.json
 .env
+.env_kovan
+.env_matic
+.env_matic_test
 

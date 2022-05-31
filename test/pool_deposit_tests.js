@@ -1,5 +1,5 @@
 const truffleAssert = require("truffle-assertions")
-const { round } = require("./helpers")
+const { round, fromWei, toWei } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
@@ -29,12 +29,12 @@ contract("Pool", accounts => {
     const precision = 10**18
 
     beforeEach(async () => {
-        usdcp = await USDCP.new(web3.utils.toWei('100000', 'ether'))
-        weth = await WETH.new(web3.utils.toWei('1000', 'ether'))
+        usdcp = await USDCP.new(toWei('100000'))
+        weth = await WETH.new(toWei('1000'))
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
-        lptoken = await PoolLPToken.new()
+        lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 18)
         strategy = await RebalancingStrategyV1.new(usdcp.address, weth.address, 60, 20)
         pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
         
@@ -44,12 +44,12 @@ contract("Pool", accounts => {
         await strategy.setPoolAddress(pool.address)
         
         // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
-        await usdcp.transfer(uniswap.address, web3.utils.toWei('10000', 'ether'))
-        await weth.transfer(uniswap.address, web3.utils.toWei('1000', 'ether'))
+        await usdcp.transfer(uniswap.address, toWei('10000'))
+        await weth.transfer(uniswap.address, toWei('1000'))
 
         // Give some inital usdcp tokens to account1 and account2
-        await usdcp.transfer(account1, web3.utils.toWei('1000', 'ether'))
-        await usdcp.transfer(account2, web3.utils.toWei('1000', 'ether'))
+        await usdcp.transfer(account1, toWei('1000'))
+        await usdcp.transfer(account2, toWei('1000'))
     })
 
 
@@ -58,7 +58,7 @@ contract("Pool", accounts => {
         assert.equal(balanceBefore, 0, "Account should have no balance")
 
         // deposit 1 USDCP 
-        let depositAmount =  web3.utils.toWei('1', 'ether')
+        let depositAmount = toWei('1')
         await usdcp.approve(pool.address, depositAmount)
         await pool.deposit(depositAmount, { from: defaultAccount })
 
@@ -72,7 +72,7 @@ contract("Pool", accounts => {
         assert.equal(balanceBefore, 0, "Account should have no balance")
 
         // deposit 100 USDCP 
-        let depositAmount =  web3.utils.toWei('100', 'ether')
+        let depositAmount =  toWei('100')
         await usdcp.approve(pool.address, depositAmount)
         await pool.deposit(depositAmount, { from: defaultAccount })
 
@@ -84,11 +84,11 @@ contract("Pool", accounts => {
 
         // expect 100 initial portfolio allocation
         const portfolioAllocation = await pool.portfolioAllocation()
-        assert.equal(web3.utils.fromWei(portfolioAllocation, 'ether'), 100 , "Invalid first portfolio allocation")
+        assert.equal(fromWei(portfolioAllocation), 100 , "Invalid first portfolio allocation")
 
         // expect 100 total portfolio allocation 
         const totalPortfolioLP = await lptoken.totalSupply()
-        assert.equal(web3.utils.fromWei(totalPortfolioLP, 'ether'), 100 , "Invalid total portfolio allocation")
+        assert.equal(fromWei(totalPortfolioLP), 100 , "Invalid total portfolio allocation")
 
         // expect 100% portfolio allocation
         const portfolioPercentage = await pool.portfolioPercentage() * 100 / precision  // (8 digits precision)
@@ -100,8 +100,8 @@ contract("Pool", accounts => {
         let balanceBefore = await usdcp.balanceOf(pool.address)
         assert.equal(balanceBefore, 0, "Account should have no balance")
 
-        let firstDeposit =  web3.utils.toWei('100', 'ether')
-        let secondDeposit =  web3.utils.toWei('200', 'ether')
+        let firstDeposit = toWei('100')
+        let secondDeposit = toWei('200')
 
         // allow the ppol to spend both deposits
         await usdcp.approve(pool.address, firstDeposit + secondDeposit)
@@ -114,21 +114,21 @@ contract("Pool", accounts => {
 
         // expect 100 initial portfolio allocation
         const portfolioAllocation1 = await pool.portfolioAllocation()
-        assert.equal(web3.utils.fromWei(portfolioAllocation1, 'ether'), 100 , "Invalid first portfolio allocation")
+        assert.equal(fromWei(portfolioAllocation1), 100 , "Invalid first portfolio allocation")
 
         // peform second deposit
         await pool.deposit(secondDeposit, { from: defaultAccount })
 
         const portfolioValue2 = await pool.totalPortfolioValue() 
-        assert.equal(web3.utils.fromWei(portfolioValue2, 'ether'), 300, "Portfolio value should be the sum of the 2 deposits")
+        assert.equal(fromWei(portfolioValue2), 300, "Portfolio value should be the sum of the 2 deposits")
 
         // expect 300 LP tokens for portfolio allocation
         const portfolioAllocation2 = await pool.portfolioAllocation()
-        assert.equal(web3.utils.fromWei(portfolioAllocation2, 'ether'), 300 , "Invalid second portfolio allocation")
+        assert.equal(fromWei(portfolioAllocation2), 300 , "Invalid second portfolio allocation")
 
         // expect 300 total portfolio allocation 
         const totalPortfolioLP = await lptoken.totalSupply()
-        assert.equal(web3.utils.fromWei(totalPortfolioLP, 'ether'), 300 , "Invalid total portfolio allocation")
+        assert.equal(fromWei(totalPortfolioLP), 300 , "Invalid total portfolio allocation")
 
         // expect 100% portfolio allocation
         const portfolioPercentage = await pool.portfolioPercentage() * 100 / precision // (8 digits precision)
@@ -140,8 +140,8 @@ contract("Pool", accounts => {
         let balanceBefore = await usdcp.balanceOf(pool.address)
         assert.equal(balanceBefore, 0, "Account should have no balance")
 
-        let deposit1 =  web3.utils.toWei('100', 'ether')
-        let deposit2 =  web3.utils.toWei('200', 'ether')
+        let deposit1 = toWei('100')
+        let deposit2 = toWei('200')
 
         // peform deposit for account1
         await usdcp.approve(pool.address, deposit1, { from: account1 })
@@ -152,7 +152,7 @@ contract("Pool", accounts => {
 
         // expect portfolio allocation for account1 to be 100 LP tokens
         const portfolioAllocation1 = await pool.portfolioAllocation({ from: account1 })
-        assert.equal(web3.utils.fromWei(portfolioAllocation1, 'ether'), 100 , "Invalid first portfolio allocation")
+        assert.equal(fromWei(portfolioAllocation1), 100 , "Invalid first portfolio allocation")
 
         // peform deposit for account2
         await usdcp.approve(pool.address, deposit2, { from: account2 })
@@ -160,15 +160,15 @@ contract("Pool", accounts => {
 
         // expect total portfolio value of 300 (the sum of the 2 deposits)
         const portfolioValue2 = await pool.totalPortfolioValue() 
-        assert.equal(web3.utils.fromWei(portfolioValue2, 'ether'), 300, "Portfolio value should be the sum of the 2 deposits")
+        assert.equal(fromWei(portfolioValue2), 300, "Portfolio value should be the sum of the 2 deposits")
 
         // expect portfolio allocation for account2 to be 200 LP tokens
         const portfolioAllocation2 = await pool.portfolioAllocation({ from: account2 })
-        assert.equal(web3.utils.fromWei(portfolioAllocation2, 'ether'), 200 , "Invalid second portfolio allocation")
+        assert.equal(fromWei(portfolioAllocation2), 200 , "Invalid second portfolio allocation")
 
         // expect 300 total portfolio allocation 
         const totalPortfolioLP = await lptoken.totalSupply()
-        assert.equal(web3.utils.fromWei(totalPortfolioLP, 'ether'), 300 , "Invalid total portfolio allocation")
+        assert.equal(fromWei(totalPortfolioLP), 300 , "Invalid total portfolio allocation")
 
         
         // portfolio % for the 2 accounts should be 33.33% 66.66%
@@ -177,8 +177,6 @@ contract("Pool", accounts => {
 
         const portfolioPercentage2 = await pool.portfolioPercentage({ from: account2 }) * 100 / precision  // (8 digits precision)
         assert.equal(round(portfolioPercentage2), 66.67)
-
     })
-
 
 })

@@ -35,7 +35,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
     uint public immutable priceFeedPrecision;
     uint immutable portFolioPercentagePrecision = 10**18; // 8 digit precision for portfolio % calculations
-    uint immutable lpPrecision = 10**18;
+    uint immutable lpPrecision;
     address immutable UNISWAPV2_WETH;
 
     constructor(
@@ -56,7 +56,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         UNISWAPV2_WETH = uniswapV2Router.WETH();
         interval = _updateInterval;
         lastTimeStamp = block.timestamp;
-        priceFeedPrecision = 10 ** priceFeed.decimals();
+        priceFeedPrecision = 10 ** uint(priceFeed.decimals());
+        lpPrecision = 10 ** uint(lpToken.decimals());
     }
 
     // the LP tokens allocations to the user
@@ -81,6 +82,9 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
 
     // returns the portfolio value in depositTokens
+    //
+    //TODO account for USD/depositToken exchange rate. For exampple if depositTokens is USDC, and investTokenPrice is ETH:
+    //    totalPortfolioValue := balance(USDC) + ( balance(ETH) * ETH/USD * USD/USDC )
     function totalPortfolioValue() public view returns(uint) {
         uint depositTokens = depositToken.balanceOf(address(this));
         uint investTokens = investToken.balanceOf(address(this));
@@ -214,12 +218,14 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
             tokenOut = address(depositToken);
         }
 
-        // balances before swap
+        // get min amount received from the swap
         uint256 depositTokenBalanceBefore = depositToken.balanceOf(address(this));
         uint256 investTokenBalanceBefore = investToken.balanceOf(address(this));
+        uint256 amountMin = getAmountOutMin(tokenIn, tokenOut, amountIn);
+
+        //TODO compare portolio value before and after swap and revert if portfolio value drops below a min allowed slippage
 
         // perform swap
-        uint256 amountMin = getAmountOutMin(tokenIn, tokenOut, amountIn);
         swap(tokenIn, tokenOut, amountIn, amountMin, address(this));
 
         // balances after swap
