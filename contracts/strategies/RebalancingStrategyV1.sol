@@ -23,13 +23,21 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         rebalancingThreshold = _rebalancingThreshold;
     }
 
-    function setPoolAddress(address _poolAddress) public onlyOwner {
-        require(poolAddress == address(0), "Pool address alreadt set");
-        poolAddress = _poolAddress;
+    function setTargetInvestPerc(uint _targetInvestPerc) public onlyOwner {
+        targetInvestPerc = _targetInvestPerc;
+    }
+
+    function setRebalancingThreshold(uint _rebalancingThreshold) public onlyOwner {
+        rebalancingThreshold = _rebalancingThreshold;
     }
 
     function setMaxPriceAge(uint secs) public onlyOwner {
         maxPriceAge = secs;
+    }
+
+    function setPoolAddress(address _poolAddress) public onlyOwner {
+        require(poolAddress == address(0), "Pool address alreadt set");
+        poolAddress = _poolAddress;
     }
 
     function name() public override view returns(string memory _) {
