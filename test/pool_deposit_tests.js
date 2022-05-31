@@ -83,15 +83,15 @@ contract("Pool", accounts => {
         assert.equal(portfolioValue, depositAmount , "Portfolio value should be the same as initial deposit")
 
         // expect 100 initial portfolio allocation
-        const portfolioAllocation = await pool.portfolioAllocation()
-        assert.equal(fromWei(portfolioAllocation), 100 , "Invalid first portfolio allocation")
+        const lptokenbalance = await lptoken.balanceOf(defaultAccount)
+        assert.equal(fromWei(lptokenbalance), 100 , "Invalid first portfolio allocation")
 
         // expect 100 total portfolio allocation 
         const totalPortfolioLP = await lptoken.totalSupply()
         assert.equal(fromWei(totalPortfolioLP), 100 , "Invalid total portfolio allocation")
 
         // expect 100% portfolio allocation
-        const portfolioPercentage = await pool.portfolioPercentage() * 100 / precision  // (8 digits precision)
+        const portfolioPercentage = await pool.portfolioPercentage(defaultAccount) * 100 / precision  // (8 digits precision)
         assert.equal(portfolioPercentage, 100 , "Invalid portfolio percentage")
     })
 
@@ -113,7 +113,7 @@ contract("Pool", accounts => {
         assert.equal(portfolioValue1, firstDeposit , "Portfolio value should be the same as the initial deposit")
 
         // expect 100 initial portfolio allocation
-        const portfolioAllocation1 = await pool.portfolioAllocation()
+        const portfolioAllocation1 = await lptoken.balanceOf(defaultAccount)
         assert.equal(fromWei(portfolioAllocation1), 100 , "Invalid first portfolio allocation")
 
         // peform second deposit
@@ -123,7 +123,7 @@ contract("Pool", accounts => {
         assert.equal(fromWei(portfolioValue2), 300, "Portfolio value should be the sum of the 2 deposits")
 
         // expect 300 LP tokens for portfolio allocation
-        const portfolioAllocation2 = await pool.portfolioAllocation()
+        const portfolioAllocation2 = await lptoken.balanceOf(defaultAccount)
         assert.equal(fromWei(portfolioAllocation2), 300 , "Invalid second portfolio allocation")
 
         // expect 300 total portfolio allocation 
@@ -131,7 +131,7 @@ contract("Pool", accounts => {
         assert.equal(fromWei(totalPortfolioLP), 300 , "Invalid total portfolio allocation")
 
         // expect 100% portfolio allocation
-        const portfolioPercentage = await pool.portfolioPercentage() * 100 / precision // (8 digits precision)
+        const portfolioPercentage = await pool.portfolioPercentage(defaultAccount) * 100 / precision // (8 digits precision)
         assert.equal(portfolioPercentage, 100 , "Invalid portfolio percentage")
     })
 
@@ -151,7 +151,7 @@ contract("Pool", accounts => {
         assert.equal(portfolioValue1, deposit1 , "Portfolio value should be the same as the initial deposit")
 
         // expect portfolio allocation for account1 to be 100 LP tokens
-        const portfolioAllocation1 = await pool.portfolioAllocation({ from: account1 })
+        const portfolioAllocation1 = await lptoken.balanceOf(account1)
         assert.equal(fromWei(portfolioAllocation1), 100 , "Invalid first portfolio allocation")
 
         // peform deposit for account2
@@ -163,7 +163,7 @@ contract("Pool", accounts => {
         assert.equal(fromWei(portfolioValue2), 300, "Portfolio value should be the sum of the 2 deposits")
 
         // expect portfolio allocation for account2 to be 200 LP tokens
-        const portfolioAllocation2 = await pool.portfolioAllocation({ from: account2 })
+        const portfolioAllocation2 = await lptoken.balanceOf(account2)
         assert.equal(fromWei(portfolioAllocation2), 200 , "Invalid second portfolio allocation")
 
         // expect 300 total portfolio allocation 
@@ -172,10 +172,10 @@ contract("Pool", accounts => {
 
         
         // portfolio % for the 2 accounts should be 33.33% 66.66%
-        const portfolioPercentage1 = await pool.portfolioPercentage({ from: account1 }) * 100 / precision  // (8 digits precision)
+        const portfolioPercentage1 = await pool.portfolioPercentage(account1) * 100 / precision  // (8 digits precision)
         assert.equal(round(portfolioPercentage1), 33.33)
 
-        const portfolioPercentage2 = await pool.portfolioPercentage({ from: account2 }) * 100 / precision  // (8 digits precision)
+        const portfolioPercentage2 = await pool.portfolioPercentage(account2) * 100 / precision  // (8 digits precision)
         assert.equal(round(portfolioPercentage2), 66.67)
     })
 

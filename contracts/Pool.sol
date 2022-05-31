@@ -15,7 +15,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
     event Swapped(string swapType, uint amount, uint spent, uint bought);
     event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
-    event Withdrawn(uint amount, uint lpToWithdraw, uint depositTokenWithdraw);
+    event Withdrawn(uint amountWithdrawn, uint lpWithdrawn, uint lpRemaining);
 
 
     IERC20 internal investToken;
@@ -34,7 +34,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     IStrategy strategy;
 
     uint public immutable priceFeedPrecision;
-    uint immutable portFolioPercentagePrecision = 10**18; // 8 digit precision for portfolio % calculations
+    uint immutable portFolioPercentagePrecision = 10**18; // 18 digit precision for portfolio % calculations
     uint immutable lpPrecision;
     address immutable UNISWAPV2_WETH;
 
@@ -60,25 +60,20 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         lpPrecision = 10 ** uint(lpToken.decimals());
     }
 
-    // the LP tokens allocations to the user
-    function portfolioAllocation() public view returns (uint) {
-        //return portfolioLPAllocation[msg.sender];
-        return lpToken.balanceOf(msg.sender);
-    }
 
-    function portfolioPercentage() public view returns (uint) {
+    // Returns the % of the fund owned by the input _addr using 18 digits precision
+    function portfolioPercentage(address _addr) public view returns (uint) {
         // the % of the portfolio of the user (with 'portFolioPercentagePrecision' digits precision)
         if (lpToken.totalSupply() == 0) return 0;
 
-        uint portFolioPercentage = portFolioPercentagePrecision * lpToken.balanceOf(msg.sender) / lpToken.totalSupply();
-        return portFolioPercentage;
+        return portFolioPercentagePrecision * lpToken.balanceOf(_addr) / lpToken.totalSupply();
     }
 
-    function portfolioValue() public view returns (uint) {
-        // the value of the portfolio allocated to the user
-        uint portFolioValue = totalPortfolioValue() * portfolioPercentage() / portFolioPercentagePrecision;
-        return portFolioValue;
+    function portfolioValue(address _addr) public view returns (uint) {
+        // the value of the portfolio allocated to the user, espressed in deposit tokens
+        return totalPortfolioValue() * portfolioPercentage(_addr) / portFolioPercentagePrecision;
     }
+
 
 
     // returns the portfolio value in depositTokens
@@ -86,6 +81,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     //TODO account for USD/depositToken exchange rate. For exampple if depositTokens is USDC, and investTokenPrice is ETH:
     //    totalPortfolioValue := balance(USDC) + ( balance(ETH) * ETH/USD * USD/USDC )
     function totalPortfolioValue() public view returns(uint) {
+
         uint depositTokens = depositToken.balanceOf(address(this));
         uint investTokens = investToken.balanceOf(address(this));
       
@@ -106,6 +102,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     function depositTokenBalance() external view returns(uint256) {
         return depositToken.balanceOf(address(this));
     }
+
 
     // returns the invest token balance of the pool
     function investTokenBalance() external view returns(uint256) {
@@ -145,50 +142,70 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         emit Deposited(amount, depositLPTokens, lpToken.totalSupply());
     }
 
-    // Withdraw 'amount' of depositTokens from the pool
+
+    // Withdraw an 'amount' of depositTokens from the pool
     function withdraw(uint amount) public override {
-
-        require (amount > 0, "Amount to withdraw should be > 0");
-
-        // Ensure the user account has enough funds in the Pool
-        uint pv = portfolioValue(); // the value of the user portfolio
-        require (pv >= amount, "Withdrawal limits exceeded");
+        require (amount > 0, "Invalid amount to withdraw");
+        uint value = totalPortfolioValue();
+        require (value > 0, "Portfolio value is 0");
 
         // the % of the whole pool to be withdrawn
-        uint withdrawPerc = portFolioPercentagePrecision * amount / totalPortfolioValue();
+        uint withdrawPerc = portFolioPercentagePrecision * amount / value;
 
-        // calculte the LP amount to burn
-        uint lpToBurn = lpToken.totalSupply() * withdrawPerc / portFolioPercentagePrecision;
-        require (lpToBurn > 0, "LP to withdraw is 0");
-        require (lpToBurn <= lpToken.balanceOf(msg.sender), "LP to withdraw more than account balance");
+        // the LP amount to withdraw
+        uint lpAmount = lpToken.totalSupply() * withdrawPerc / portFolioPercentagePrecision;
+
+        withdrawLP(lpAmount);
+    }
+
+
+    // Withdraw all LP tokens
+    function withdrawAll() public  {
+        withdrawLP(lpToken.balanceOf(msg.sender));
+    }
+
+    // Withdraw the amount of lp tokens provided
+    function withdrawLP(uint lpAmount) public  {
+
+        require(lpAmount > 0, "Invalid LP amount");
+        require(lpToken.totalSupply() > 0, "No LP tokens minted");
+        require(lpAmount <= lpToken.balanceOf(msg.sender), "LP balance exceeded");
+
+        uint withdrawPerc = portFolioPercentagePrecision * lpAmount / lpToken.totalSupply();
 
         // burn the user LP
-        lpToken.burn(msg.sender, lpToBurn);
+        lpToken.burn(msg.sender, lpAmount);
 
         // calculate amount of depositTokens & investTokens to withdraw
-        uint depositTokens = depositToken.balanceOf(address(this));
-        uint investTokens = investToken.balanceOf(address(this));
+        uint depositTokensBeforeSwap = depositToken.balanceOf(address(this));
+        uint investTokensBeforeSwap = investToken.balanceOf(address(this));
 
-        uint withdrawDepositTokensAmount = depositTokens * withdrawPerc / portFolioPercentagePrecision;
-        uint withdrawInvestTokensTokensAmount = investTokens * withdrawPerc / portFolioPercentagePrecision;
+        // the amount of deposit and invest tokens to withdraw
+        uint withdrawDepositTokensAmount = depositTokensBeforeSwap * withdrawPerc / portFolioPercentagePrecision;
+        uint withdrawInvestTokensTokensAmount = investTokensBeforeSwap * withdrawPerc / portFolioPercentagePrecision;
 
+        uint depositTokensSwapped = 0;
+        // check if have to swap some invest tokens back into deposit tokens
         if (withdrawInvestTokensTokensAmount > 0) {
             // swap some investTokens into depositTokens to be withdrawn
             uint256 amountMin = getAmountOutMin(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount);
             swap(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount, amountMin, address(this));
+        
+            // determine how much depositTokens where swapped
+            uint depositTokensAfterSwap = depositToken.balanceOf(address(this));
+            require(depositTokensAfterSwap >= depositTokensBeforeSwap, "Deposit tokens after swap are less than amount before swap");
+            depositTokensSwapped = depositTokensAfterSwap - depositTokensBeforeSwap;
         }
 
-        // determine how much depositTokens where swapped
-        uint depositTokensAfterSwap = depositToken.balanceOf(address(this));
-        require(depositTokensAfterSwap >= depositTokens, "Deposit tokens after swap should not be less than amount before the swap");
-        uint depositTokensSwapped = depositTokensAfterSwap - depositTokens;
 
         // transfer depositTokens to the user
-        uint depositTokenWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;        
-        super.withdraw(depositTokenWithdraw);
+        uint amountToWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;        
+        super.withdraw(amountToWithdraw);
 
-        emit Withdrawn(amount, lpToBurn, lpToken.totalSupply());
+        emit Withdrawn(amountToWithdraw, lpAmount, lpToken.balanceOf(msg.sender));
     }
+
+
 
 
 

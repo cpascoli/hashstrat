@@ -75,11 +75,11 @@ contract("Pool", accounts => {
 
         assert.equal(fromWei(( await usdcp.balanceOf(account1))), 940, "Invalid account1 balance before")
         assert.equal(fromWei(( await usdcp.balanceOf(account2))), 900, "Invalid account2 balance before")
-        assert.equal(fromWei((await pool.portfolioValue({ from: account1 }))), 60 , "Invalid account1 portfolio value")
-        assert.equal(fromWei((await pool.portfolioValue({ from: account2 }))), 100 , "Invalid account2 portfolio value")
+        assert.equal(fromWei((await pool.portfolioValue(account1))), 60 , "Invalid account1 portfolio value")
+        assert.equal(fromWei((await pool.portfolioValue(account2))), 100 , "Invalid account2 portfolio value")
         assert.equal(fromWei((await pool.totalPortfolioValue()) , 'ether'), 160, "Invalid total portfolio value before")
-        assert.equal((await pool.portfolioPercentage({ from: account1 })) * 100 / precision, 37.5, "Invalid account1 portfolio % before")
-        assert.equal((await pool.portfolioPercentage({ from: account2 })) * 100 / precision, 62.5, "Invalid account2 portfolio % before")
+        assert.equal((await pool.portfolioPercentage(account1)) * 100 / precision, 37.5, "Invalid account1 portfolio % before")
+        assert.equal((await pool.portfolioPercentage(account2)) * 100 / precision, 62.5, "Invalid account2 portfolio % before")
         
         // Account1 withdraws 20 usd
         let withraw1 =  web3.utils.toWei('20', 'ether')
@@ -87,11 +87,11 @@ contract("Pool", accounts => {
 
         assert.equal(fromWei((await usdcp.balanceOf(account1))), 960, "Invalid account1 balance after")
         assert.equal(fromWei((await usdcp.balanceOf(account2))), 900, "Invalid account2 balance after")
-        assert.equal(fromWei((await pool.portfolioValue({ from: account1 }))), 40 , "Invalid account1 portfolio value after")
-        assert.equal(fromWei((await pool.portfolioValue({ from: account2 }))), 100 , "Invalid account2 portfolio value after")
+        assert.equal(fromWei((await pool.portfolioValue(account1))), 40 , "Invalid account1 portfolio value after")
+        assert.equal(fromWei((await pool.portfolioValue(account2))), 100 , "Invalid account2 portfolio value after")
         assert.equal(fromWei((await pool.totalPortfolioValue()) , 'ether'), 140, "Invalid total portfolio value")
-        assert.equal(round((await pool.portfolioPercentage({ from: account1 })) * 100 / precision), 28.57, "Invalid account1 portfolio % before")
-        assert.equal(round((await pool.portfolioPercentage({ from: account2 })) * 100 / precision), 71.43, "Invalid account2 portfolio % before")
+        assert.equal(round((await pool.portfolioPercentage(account1)) * 100 / precision), 28.57, "Invalid account1 portfolio % before")
+        assert.equal(round((await pool.portfolioPercentage(account2)) * 100 / precision), 71.43, "Invalid account2 portfolio % before")
 
     })
 
@@ -118,19 +118,19 @@ contract("Pool", accounts => {
         assert.equal(fromWei(( await usdcp.balanceOf(account1))), 940, "Invalid account1 balance before")
         assert.equal(fromWei(( await usdcp.balanceOf(account2))), 900, "Invalid account2 balance before")
         
-        assert.equal(fromWei((await pool.portfolioValue({ from: account1 }))), 60 , "Invalid account1 portfolio value")
-        assert.equal(fromWei((await pool.portfolioValue({ from: account2 }))), 100 , "Invalid account2 portfolio value")
+        assert.equal(fromWei((await pool.portfolioValue(account1))), 60 , "Invalid account1 portfolio value")
+        assert.equal(fromWei((await pool.portfolioValue(account2))), 100 , "Invalid account2 portfolio value")
         assert.equal(fromWei((await pool.totalPortfolioValue()) , 'ether'), 160, "Invalid total portfolio value before")
 
-        assert.equal((await pool.portfolioPercentage({ from: account1 })) * 100 / precision, 37.5, "Invalid account1 portfolio % before")
-        assert.equal((await pool.portfolioPercentage({ from: account2 })) * 100 / precision, 62.5, "Invalid account2 portfolio % before")
+        assert.equal((await pool.portfolioPercentage(account1)) * 100 / precision, 37.5, "Invalid account1 portfolio % before")
+        assert.equal((await pool.portfolioPercentage(account2)) * 100 / precision, 62.5, "Invalid account2 portfolio % before")
   
         // invest some tokens
         const price1 = await priceFeed.getLatestPrice()
         await pool.invest()
 
-        assert.equal(fromWei((await pool.portfolioValue({ from: account1 }))), 60, "Invalid portfolio value for account1 after withdrawal")
-        assert.equal(fromWei((await pool.portfolioValue({ from: account2 }))), 100, "Invalid portfolio value for account2 after withdrawal")
+        assert.equal(fromWei((await pool.portfolioValue(account1))), 60, "Invalid portfolio value for account1 after withdrawal")
+        assert.equal(fromWei((await pool.portfolioValue(account2))), 100, "Invalid portfolio value for account2 after withdrawal")
         assert.equal(fromWei((await pool.totalPortfolioValue())), 160, "Invalid total portfolio value for account2 after withdrawal")
         
         // token price goes up
@@ -142,24 +142,24 @@ contract("Pool", accounts => {
         const account1Val = portfolioVal * 60 / 160
         const account2Val = portfolioVal * 100 / 160
 
-        assert.equal(fromWei((await pool.portfolioValue({ from: account1 }))), account1Val, "Invalid portfolio value for account1")
-        assert.equal(fromWei((await pool.portfolioValue({ from: account2 }))), account2Val, "Invalid portfolio value for account2")
+        assert.equal(fromWei((await pool.portfolioValue(account1))), account1Val, "Invalid portfolio value for account1")
+        assert.equal(fromWei((await pool.portfolioValue(account2))), account2Val, "Invalid portfolio value for account2")
         assert.equal(fromWei((await pool.totalPortfolioValue())), portfolioVal, "Invalid total portfolio value for account2 after withdrawal")
 
         // account1 withdraws all 
-        const value1a = await pool.portfolioValue({ from: account1 })
+        const value1a = await pool.portfolioValue(account1)
         await pool.withdraw(value1a, { from: account1 })
 
-        assert.equal(fromWei((await pool.portfolioValue({ from: account1 }))), 0, "Invalid portfolio value for account1 after withdrawal")
-        assert.equal(fromWei((await pool.portfolioValue({ from: account2 }))), account2Val, "Invalid portfolio value for account2 after withdrawal")
+        assert.equal(fromWei((await pool.portfolioValue(account1))), 0, "Invalid portfolio value for account1 after withdrawal")
+        assert.equal(fromWei((await pool.portfolioValue(account2))), account2Val, "Invalid portfolio value for account2 after withdrawal")
         assert.equal(fromWei((await pool.totalPortfolioValue())), (portfolioVal - account1Val), "Invalid total portfolio value for account2 after withdrawal")
 
         // account2 withdraws all 
-        const value2a = await pool.portfolioValue({ from: account2 }) 
+        const value2a = await pool.portfolioValue(account2) 
         await pool.withdraw(value2a, { from: account2 })
 
-        assert.equal(round(fromWei((await pool.portfolioValue({ from: account1 }))), 10), 0, "Invalid portfolio value for account1 after withdrawal")
-        assert.equal(round(fromWei((await pool.portfolioValue({ from: account2 }))), 10), 0, "Invalid portfolio value for account2 after withdrawal")
+        assert.equal(round(fromWei((await pool.portfolioValue(account1))), 10), 0, "Invalid portfolio value for account1 after withdrawal")
+        assert.equal(round(fromWei((await pool.portfolioValue(account2))), 10), 0, "Invalid portfolio value for account2 after withdrawal")
         assert.equal(round(fromWei((await pool.totalPortfolioValue())), 10), 0, "Invalid total portfolio value for account2 after withdrawal")
     })
 

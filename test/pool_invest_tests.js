@@ -101,7 +101,7 @@ contract("Pool", accounts => {
         assert.equal(portfolioValue, deposit1 , "Portfolio value should be the same as the initial deposit")
 
         // expect portfolio allocation for account1 to be 100 LP tokens
-        const portfolioAllocation1 = await pool.portfolioAllocation({ from: account1 })
+        const portfolioAllocation1 =  await lptoken.balanceOf(account1)
         assert.equal(web3.utils.fromWei(portfolioAllocation1, 'ether'), 100 , "Invalid first portfolio allocation")
 
         // swap tokens
@@ -119,7 +119,7 @@ contract("Pool", accounts => {
         assert.equal(web3.utils.fromWei(portfolioValueAfter, 'ether'), 300, "Portfolio value should be the sum of the 2 deposits")
 
         // expect portfolio allocation for account2 to be 200 LP tokens
-        const portfolioAllocation2 = await pool.portfolioAllocation({ from: account2 })
+        const portfolioAllocation2 = await lptoken.balanceOf(account2)
         assert.equal(web3.utils.fromWei(portfolioAllocation2, 'ether'), 200 , "Invalid second portfolio allocation")
 
         // expect 300 total portfolio LP 
@@ -128,28 +128,28 @@ contract("Pool", accounts => {
 
         
         // portfolio % for the 2 accounts should be 33.33% 66.66%
-        const portfolioPercentage1 = await pool.portfolioPercentage({ from: account1 }) * 100 / precision // (8 digits precision)
+        const portfolioPercentage1 = await pool.portfolioPercentage(account1) * 100 / precision // (8 digits precision)
         assert.equal(round(portfolioPercentage1), 33.33)
 
-        const portfolioPercentage2 = await pool.portfolioPercentage({ from: account2 }) * 100 / precision // (8 digits precision)
+        const portfolioPercentage2 = await pool.portfolioPercentage(account2) * 100 / precision // (8 digits precision)
         assert.equal(round(portfolioPercentage2), 66.67)
 
         // swap tokens
         await pool.invest()
 
          // portfolio % for the 2 accounts should still be 33.33% 66.66%
-        const portfolioPercentage1after = await pool.portfolioPercentage({ from: account1 }) * 100 / precision // (8 digits precision)
+        const portfolioPercentage1after = await pool.portfolioPercentage(account1) * 100 / precision // (8 digits precision)
         assert.equal(round(portfolioPercentage1after), 33.33)
 
-        const portfolioPercentage2after = await pool.portfolioPercentage({ from: account2 }) * 100 / precision // (8 digits precision)
+        const portfolioPercentage2after = await pool.portfolioPercentage(account2) * 100 / precision // (8 digits precision)
         assert.equal(round(portfolioPercentage2after), 66.67)
 
         // portfolio value for account1 and account2
-        const portfolioValue1 = await pool.portfolioValue({ from: account1 })
+        const portfolioValue1 = await pool.portfolioValue(account1)
         const portfolioValue1Rounded = Math.round(web3.utils.fromWei(portfolioValue1, 'ether') * 100) / 100
         assert.equal(portfolioValue1Rounded, 100, "Invalid portfolio value for acount1")
 
-        const portfolioValue2 = await pool.portfolioValue({ from: account2 })
+        const portfolioValue2 = await pool.portfolioValue(account2)
         const portfolioValue2Rounded = Math.round(web3.utils.fromWei(portfolioValue2, 'ether') * 100) / 100
         assert.equal(portfolioValue2Rounded, 200, "Invalid portfolio value for account2")
     })
