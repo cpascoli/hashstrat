@@ -17,9 +17,10 @@
     "migrate:kovan": "npx truffle migrate --network kovan",
     "migrate:matic": "npx truffle migrate --network matic",
     "migrate:kovan:reset": "npx truffle migrate --network kovan --reset",
-    "migrate:matic:reset": "npx truffle migrate --network matic --rese",
+    "migrate:matic:reset": "npx truffle migrate --network matic --reset",
     "test": "npx truffle test",
-    "verify": "npx truffle run verify Pool RebalancingStrategyV1 PoolLPToken PriceCOnsumerV3 --network kovan",
+    "verify:kovan": "npx truffle run verify PriceConsumerV3 PoolLPToken RebalancingStrategyV1 Pool --network kovan",
+    "verify:matic": "npx truffle run verify PriceConsumerV3 PoolLPToken RebalancingStrategyV1 Pool --network matic",
     "portfolio-value:kovan": "npx truffle exec scripts/read-portfolio-value.js --network kovan"
   },
   "repository": {
