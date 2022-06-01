@@ -10,5 +10,6 @@ contract WETH is ERC20 {
 
     constructor(uint256 initialSupply) ERC20("WETH Token", "WETH") public {
         _mint(msg.sender, initialSupply);
+        _setupDecimals(18);
     }
 }

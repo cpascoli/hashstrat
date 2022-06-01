@@ -3,13 +3,12 @@ pragma solidity ^0.6.6;
 
 import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../node_modules/@openzeppelin/contracts/access/Ownable.sol";
+import "./IERC20Metadata.sol";
 
 contract Wallet is Ownable {
 
     event Deposited(address indexed user, uint amount);
     event Withdrawn(address indexed user, uint amount);
-
-    IERC20 internal depositToken;
 
     uint public totalDeposited = 0;
     uint public totalWithdrawn = 0;
@@ -21,12 +20,11 @@ contract Wallet is Ownable {
     // users that deposited depositToken tokens into their balances
     address[] internal usersArray;
     mapping (address => bool) internal users;
-
+    IERC20Metadata internal depositToken;
 
     constructor(address _depositTokenAddress) public {
-        depositToken = IERC20(_depositTokenAddress);
+        depositToken = IERC20Metadata(_depositTokenAddress);
     }
-
 
     function getDeposits() external view returns (uint) {
         return deposits[msg.sender];
@@ -35,7 +33,6 @@ contract Wallet is Ownable {
     function getWithdrawals() external view returns (uint) {
         return withdrawals[msg.sender];
     }
-
 
     function deposit(uint amount) public virtual {
         require(amount > 0, "Deposit amount is 0");

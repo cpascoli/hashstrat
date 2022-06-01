@@ -2,9 +2,9 @@
 pragma solidity ^0.6.6;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 import "./IUniswapV2Router.sol";
+import "./IERC20Metadata.sol";
 
 /**
     Mock implementation of swap functionality and price feed via the interfaces:
@@ -15,20 +15,18 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
     address public poolAddress;
 
-    IERC20 internal depositToken;
-    IERC20 internal investToken;
+    IERC20Metadata internal depositToken;
+    IERC20Metadata internal investToken;
 
     uint public price;
     uint pricePrecision = 10**8;
     uint slippage = 0; // 5% slippage
 
     event Swapped(string direction, uint256 amountIn, uint256 amountOut, uint256 price, uint slippage);
-    event GetAmountsOutInfo(uint amountIn, address path, uint amount, uint price);
-
 
     constructor(address _depositTokenAddress, address _investTokenAddress) public  {
-         depositToken = IERC20(_depositTokenAddress);
-         investToken = IERC20(_investTokenAddress);
+         depositToken = IERC20Metadata(_depositTokenAddress);
+         investToken = IERC20Metadata(_investTokenAddress);
          price = 2 * pricePrecision;
     }
 
@@ -57,17 +55,34 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
     function getAmountsOut(uint amountIn, address[] calldata path) external override view returns (uint[] memory amounts) {
         uint[] memory amountOutMins = new uint[](path.length);
-        uint amount;
+        uint amountOut;
 
         if (path[0] == address(depositToken)) {
+
+            uint tokenInDecimals = uint(depositToken.decimals());
+            uint tokenOutDecimals = uint(investToken.decimals());
+
             // swap USD => ETH
-            amount = amountIn * pricePrecision / price * (10000 - slippage) / 10000;
+              uint amountInAdjusted = (tokenOutDecimals >= tokenInDecimals) ?
+                 amountIn * (10 ** (tokenOutDecimals - tokenInDecimals)) :
+                 amountIn / (10 ** (tokenInDecimals - tokenOutDecimals));
+
+            amountOut = amountInAdjusted * pricePrecision / price * (10000 - slippage) / 10000;
+
         } else if (path[0] == address(investToken)) {
             // swap ETH => USD
-            amount = amountIn * price / pricePrecision * (10000 - slippage) / 10000;
+
+            uint tokenInDecimals = uint(investToken.decimals());
+            uint tokenOutDecimals = uint(depositToken.decimals());
+
+            uint amountInAdjusted = (tokenOutDecimals >= tokenInDecimals) ?
+               amountIn * (10 ** (tokenOutDecimals - tokenInDecimals)) :
+               amountIn / (10 ** (tokenInDecimals - tokenOutDecimals));
+
+            amountOut = amountInAdjusted * price / pricePrecision * (10000 - slippage) / 10000;
         }
 
-        amountOutMins[path.length-1] = amount;
+        amountOutMins[path.length-1] = amountOut;
         return amountOutMins;
     }
 
@@ -81,24 +96,32 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
         require(poolAddress != address(0), "poolAddress not set");
 
+        uint depositTokenDecimals = uint(depositToken.decimals());
+        uint investTokensDecimals = uint(investToken.decimals());
         
         if (path[0] == address(depositToken)) {
-
             // swap USD => ETH
             depositToken.transferFrom(poolAddress, address(this), amountIn);
-
-            uint amount = amountIn * pricePrecision / price * (10000 - uint(slippage)) / 10000;
+            // account for difference in decimal places
+            uint amountInAdjusted = (investTokensDecimals >= depositTokenDecimals) ?
+                    amountIn * (10 ** (investTokensDecimals - depositTokenDecimals)) :
+                    amountIn / (10 ** (depositTokenDecimals - investTokensDecimals));
+    
+            uint amount = amountInAdjusted * pricePrecision / price * (10000 - uint(slippage)) / 10000;
             require(investToken.balanceOf(address(this)) >= amount, "Not enough ETH in the pool");
             investToken.transfer(to, amount);
 
             emit Swapped("USD -> ETH", amountIn, amount, price, slippage);
 
         } else if (path[0] == address(investToken)) {
-
             // swap ETH => USD
             investToken.transferFrom(poolAddress, address(this), amountIn);
+            // account for difference in decimal places
+            uint amountInAdjusted = (investTokensDecimals >= depositTokenDecimals) ?
+                    amountIn / (10 ** (investTokensDecimals - depositTokenDecimals)) :
+                    amountIn * (10 ** (depositTokenDecimals - investTokensDecimals));
 
-            uint amount = amountIn * price / pricePrecision * (10000 - uint(slippage)) / 10000;
+            uint amount = amountInAdjusted * price / pricePrecision * (10000 - uint(slippage)) / 10000;
             require(depositToken.balanceOf(address(this)) >= amount, "Not enough USD in the pool");
             depositToken.transfer(to, amount);
 

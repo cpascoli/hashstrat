@@ -10,5 +10,6 @@ contract USDCP is ERC20 {
 
     constructor(uint256 initialSupply) ERC20("USDCP Token", "USDCP") public {
         _mint(msg.sender, initialSupply);
+        _setupDecimals(6);
     }
 }

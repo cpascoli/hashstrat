@@ -2,13 +2,13 @@
 pragma solidity ^0.6.6;
 
 import "@chainlink/contracts/src/v0.6/interfaces/KeeperCompatibleInterface.sol";
-import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./Wallet.sol";
 import "./IUniswapV2Router.sol";
 import "./PriceConsumerV3.sol";
 import "./PoolLPToken.sol";
 import "./strategies/IStrategy.sol";
+import "./IERC20Metadata.sol";
 
 
 contract Pool is Wallet, KeeperCompatibleInterface  {
@@ -17,28 +17,28 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
     event Withdrawn(uint amountWithdrawn, uint lpWithdrawn, uint lpRemaining);
 
-    IERC20 internal investToken;
+    event SlippageInfo(uint slippage, uint thereshold, uint amountIn, uint amountMin);
+    event GetAmountOutMinInfo(uint amountIn, uint amountOut);
+
+
+    IERC20Metadata internal investToken;
 
     /**
     * Use an interval in seconds and a timestamp to slow execution of Upkeep
     */
+    uint public slippageThereshold = 500; // allow for 5% slippage on swaps (aka should receive at least 95% of the expected token amount)
     uint public immutable interval;
-   
     uint public lastTimeStamp;
-    uint public counter;
+    uint public performUpkeepCounter;
 
     IUniswapV2Router uniswapV2Router;
     IPriceFeed priceFeed;
     PoolLPToken lpToken;
     IStrategy strategy;
 
-    uint public immutable priceFeedPrecision;
     uint immutable portFolioPercentagePrecision = 10**18; // 18 digit precision for portfolio % calculations
-    uint immutable lpPrecision;
     address immutable UNISWAPV2_WETH;
-
-    uint slippageThereshold = 500; // allow for 5% slippage on swaps (aka should receive at least 95% of the expected token amount)
-
+ 
     constructor(
         address _uniswapV2RouterAddress, 
         address _priceFeedAddress, 
@@ -48,7 +48,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         address _strategyAddress,
         uint _updateInterval) public Wallet(_depositTokenAddress) {
 
-        investToken = IERC20(_investTokenAddress);
+        investToken = IERC20Metadata(_investTokenAddress);
         uniswapV2Router = IUniswapV2Router(_uniswapV2RouterAddress);
         lpToken = PoolLPToken(_lpTokenAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
@@ -57,8 +57,6 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         UNISWAPV2_WETH = uniswapV2Router.WETH();
         interval = _updateInterval;
         lastTimeStamp = block.timestamp;
-        priceFeedPrecision = 10 ** uint(priceFeed.decimals());
-        lpPrecision = 10 ** uint(lpToken.decimals());
     }
 
 
@@ -85,12 +83,25 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         uint depositTokens = depositToken.balanceOf(address(this));
         uint investTokens = investToken.balanceOf(address(this));
-      
+
         int investTokenPrice = priceFeed.getLatestPrice();
         require (investTokenPrice >= 0, "Invest token price can't be negative");
 
-        // portoflio value is the sum of deposit token value and invest token value
-        uint value = depositTokens + (investTokens * uint(investTokenPrice) / priceFeedPrecision);
+        uint depositTokenDecimals = uint(depositToken.decimals());
+        uint investTokensDecimals = uint(investToken.decimals());
+        uint priceFeedPrecision = 10 ** uint(priceFeed.decimals());
+       
+        uint value;        
+         // portoflio value is the sum of deposit token value and invest token value in the unit of the deposit token
+        if (investTokensDecimals >= depositTokenDecimals) {
+            // invest token has more decimals than deposit token, have to divide the invest token value by the difference
+            uint decimalsConversionFactor = 10 ** (investTokensDecimals - depositTokenDecimals);
+            value = depositTokens + (investTokens * uint(investTokenPrice) / decimalsConversionFactor / priceFeedPrecision);
+        } else {
+            // invest token has less decimals tham deposit token, have to multiply invest token value by the difference
+            uint decimalsConversionFactor = 10 ** (depositTokenDecimals - investTokensDecimals);
+            value = depositTokens + (investTokens * uint(investTokenPrice) * decimalsConversionFactor / priceFeedPrecision);
+        }
 
         return value;
     }
@@ -127,6 +138,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         // calculate portfolio % of the deposit (using lpPrecision digits precision)
         uint portFolioValue = totalPortfolioValue();
         require(portFolioValue > 0, "Portfolio value is 0");
+
+        uint lpPrecision = 10 ** uint(lpToken.decimals());
         uint portFolioPercentage = lpPrecision * amount / portFolioValue;
 
         // calculate the amount of LP tokens for the deposit so that they represent 
@@ -228,19 +241,33 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         // swap USD => ETH
         if (tokenIn == address(depositToken) && tokenOut == address(investToken)) {
-            amountExpected = amountIn * pricePrecision / price;
+            uint tokenInDecimals = uint(depositToken.decimals());
+            uint tokenOutDecimals = uint(investToken.decimals());
+
+            uint amountInAdjusted = (tokenOutDecimals >= tokenInDecimals) ?
+                 amountIn * (10 ** (tokenOutDecimals - tokenInDecimals)) :
+                 amountIn / (10 ** (tokenInDecimals - tokenOutDecimals));
+
+            amountExpected = amountInAdjusted * pricePrecision / price;
         } 
 
         // swap ETH => USD
         if (tokenIn == address(investToken) && tokenOut == address(depositToken)) {
-            amountExpected = amountIn * price / pricePrecision;
+            uint tokenInDecimals = uint(investToken.decimals());
+            uint tokenOutDecimals = uint(depositToken.decimals());
+
+            uint amountInAdjusted = (tokenOutDecimals >= tokenInDecimals) ?
+               amountIn * (10 ** (tokenOutDecimals - tokenInDecimals)) :
+               amountIn / (10 ** (tokenInDecimals - tokenOutDecimals));
+
+            amountExpected = amountInAdjusted * price / pricePrecision;
         }
 
         require(amountExpected > 0, "Invalid amount expected");
-
         if (amountMin >= amountExpected) return 0;
 
-        return 10000 - (10000 * amountMin / amountExpected); // e.g 10000 - 9500 = 500  (5% slippage)
+        uint slippage = 10000 - (10000 * amountMin / amountExpected); // e.g 10000 - 9500 = 500  (5% slippage)
+        return slippage;
     }
 
 
@@ -274,6 +301,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
 
         // ensure slippage is not too much (e.g. <= 500 for a 5% slippage)
         uint slippage = slippagePercentage(tokenIn, tokenOut, amountIn, amountMin);
+        emit SlippageInfo(slippage, slippageThereshold, amountIn, amountMin);
+
         if (slippage > slippageThereshold) {
             revert("Slippage thereshold exceeded");
         }
@@ -340,7 +369,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     //this function will return the minimum amount from a swap
     //input the 3 parameters below and it will return the minimum amount out
     //this is needed for the swap function above
-    function getAmountOutMin(address _tokenIn, address _tokenOut, uint256 _amountIn) internal view returns (uint256) {
+    function getAmountOutMin(address _tokenIn, address _tokenOut, uint256 _amountIn) internal view returns (uint) {
         //path is an array of addresses.
         //this path array will have 3 addresses [tokenIn, WETH, tokenOut]
         //the if statement below takes into account if token in or token out is WETH.  then the path is only 2 addresses
@@ -359,7 +388,8 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         uint256[] memory amountOutMins = uniswapV2Router.getAmountsOut(_amountIn, path);
         require(amountOutMins.length >= path.length , "Invalid amountOutMins size");
 
-        return amountOutMins[path.length - 1];
+        uint amountOut = amountOutMins[path.length - 1];
+        return amountOut;
     }
 
 
@@ -373,7 +403,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
         //We highly recommend revalidating the upkeep in the performUpkeep function
         if ((block.timestamp - lastTimeStamp) > interval ) {
             lastTimeStamp = block.timestamp;
-            counter = counter + 1;
+            performUpkeepCounter = performUpkeepCounter + 1;
             invest();
         }
     }

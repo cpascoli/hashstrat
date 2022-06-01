@@ -11,7 +11,7 @@ This is the functionality implemented so far:
 - The Pool uses Chainlink keepers to automate the Pool rebalaning operations.
 - The price of WETH/USD is also provided by a Chainlink feed. This price feed is used to determine the value of the WETH in the fund and to trigger the rebalance process.
 
-NOTE: Deployment scripts can deploy to Kovan only.
+NOTE: Deployment scripts can deploy to Kovan and Poligon (Mainnet).
 
 
 
@@ -56,19 +56,30 @@ npm run test
 ```
 
 
-### Deploy (Kovan)
+### Deploy
 
+Kovan:
 ```bash
-npm run migrate:kovan:
+npm run migrate:kovan
+```
+
+Polygon:
+```bash
+npm run migrate:matic
 ```
 
 
-### Verify contracts (Kovan)
+### Verify contracts
 
+Kovan:
 ```bash
-npm run verify
+npm run verify:kovan
 ```
 
+Polygon:
+```bash
+npm run verify:matic
+```
 
 ## Query the user portfolio data (Kovan)
 
@@ -91,4 +102,7 @@ npm run portfolio-value:kovan
  
  Execution of the `invest` function on the Pool contract can trigger a rebalance operation (aka a swap between DAI and WETH or viceversa) as demostrated in [this transaction](https://kovan.etherscan.io/tx/0x7cd5b8f334d48121713d6fe11280e164a78fafee0909648dd9254482d8e02a0f).
 
- 
+
+## HowTo use the Pool Contract (Polygon)
+
+TODO
