@@ -274,7 +274,7 @@ contract Pool is Wallet, KeeperCompatibleInterface  {
     function invest() public {
 
         // evaluate strategy to see if we should BUY or SELL
-        (StrategyAction action, uint amountIn) = strategy.evaluate(priceFeed.getLatestPrice(), priceFeed.getLatestTimestamp());
+        (StrategyAction action, uint amountIn) = strategy.evaluate(address(this), priceFeed.getLatestPrice(), priceFeed.getLatestTimestamp());
 
         if (action == StrategyAction.NONE || amountIn == 0) {
             // No rebalancing needed
