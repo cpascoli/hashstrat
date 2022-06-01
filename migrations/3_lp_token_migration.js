@@ -12,7 +12,7 @@ module.exports = async (deployer, network, [defaultAccount]) => {
 
   console.log("deploying PoolLPToken to ", network)
   const name = "HashStrat LP Token"
-  const symbol = "HASHSTRAT-LP"
+  const symbol = "HASHSTR-LP"
 
   if (network.startsWith('matic')) {
     const decimals = 6;   // USDC has 6 decimals
