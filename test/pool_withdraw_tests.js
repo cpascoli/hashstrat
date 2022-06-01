@@ -42,7 +42,6 @@ contract("Pool", accounts => {
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
         await uniswap.setPoolAddress(pool.address) //FIXME this is probably unnecessary
-        await strategy.setPoolAddress(pool.address)
 
         // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
         await usdcp.transfer(uniswap.address, toUsdc('10000'))

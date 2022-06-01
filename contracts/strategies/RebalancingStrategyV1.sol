@@ -13,7 +13,6 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
     uint public maxPriceAge = 6 * 60 * 60; // use prices old 6h max (in Kovan prices are updated every few hours)
     uint public targetInvestPerc;
     uint public rebalancingThreshold;
-    address poolAddress;
 
     constructor(address _depositTokenAddress, address _investTokenAddress, uint _targetInvestPerc, uint _rebalancingThreshold) public {
         depositToken = IERC20(_depositTokenAddress);
@@ -34,11 +33,6 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         maxPriceAge = secs;
     }
 
-    function setPoolAddress(address _poolAddress) public onlyOwner {
-        require(poolAddress == address(0), "Pool address alreadt set");
-        poolAddress = _poolAddress;
-    }
-
     function name() public override view returns(string memory _) {
         return "RebalancingStrategyV1";
     }
@@ -47,7 +41,7 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         return "A simple rebalancing strategy";
     }
 
-    function evaluate(int investTokenPrice, uint time) public override view returns(StrategyAction action, uint amountIn) {
+    function evaluate(address poolAddress, int investTokenPrice, uint time) public override view returns(StrategyAction action, uint amountIn) {
 
         require(investTokenPrice >= 0, "Price is negative");
         require(poolAddress != address(0), "poolAddress is 0");

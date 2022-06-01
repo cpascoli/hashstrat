@@ -41,7 +41,6 @@ contract("Pool", accounts => {
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
         await uniswap.setPoolAddress(pool.address) //FIXME this is probably unnecessary
-        await strategy.setPoolAddress(pool.address)
 
         // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
         await usdcp.transfer(uniswap.address, toUsdc('10000'))
@@ -81,7 +80,7 @@ contract("Pool", accounts => {
         const price = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
         const depositTokensExpected = fromUsdc(depositAmount) * (100 - targetInvestPerc) / 100
         const investTokensExpected = fromUsdc(depositAmount) * targetInvestPerc / 100 / price
-        
+
         assert.equal(fromUsdc(balanceUsdcAfter), depositTokensExpected, "Invalid deposit balance after invest")
         assert.equal(fromWei(balanceWethAfter), investTokensExpected, "Invalid invest balance after invest")
     })

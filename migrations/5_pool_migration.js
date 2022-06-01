@@ -37,8 +37,7 @@ module.exports = async (deployer, network, [defaultAccount]) => {
 
     const pool = await Pool.deployed()
     await lptoken.addMinter(pool.address)
-    await lptoken.renounceMinter()
-    await strategy.setPoolAddress(pool.address)
+    //await lptoken.renounceMinter()
 
     console.log("Pool is Minter: ", (await lptoken.isMinter(pool.address)) )
 
@@ -60,7 +59,6 @@ module.exports = async (deployer, network, [defaultAccount]) => {
     const pool = await Pool.deployed()
     await lptoken.addMinter(pool.address)
     await lptoken.renounceMinter()
-    await strategy.setPoolAddress(pool.address)
 
     console.log("Pool is Minter: ", (await lptoken.isMinter(pool.address)) )
   } else {
