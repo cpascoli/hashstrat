@@ -38,16 +38,17 @@ module.exports = {
       network_id: '42',
       gas: 8000000,
       networkCheckTimeout: 300000,
-      timeoutBlocks: 100,
+      timeoutBlocks: 50,
       skipDryRun: true
     },
     matic: {
       provider: () => new HDWalletProvider(mnemonic, url),
       network_id: 137,
-      confirmations: 2,
-      timeoutBlocks: 200,
+      confirmations: 0,
+      timeoutBlocks: 50,
+      networkCheckTimeout:60000,
       gasPrice: 50000000000,
-      skipDryRun: false
+      skipDryRun: false,
     },
   },
   compilers: {
