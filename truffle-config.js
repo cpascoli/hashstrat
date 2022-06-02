@@ -9,10 +9,18 @@ const bscscan_api_key = process.env.BSSCAN_API_KEY
 
 module.exports = {
   networks: {
+    develop: {
+      host: '127.0.0.1',
+      port: 9545,
+      network_id: 1337,
+      accounts: 5,
+      defaultEtherBalance: 500,
+      blockTime: 3
+    },
     cldev: {
       host: '127.0.0.1',
-      port: 8545,
-      network_id: '*',
+      port: 9545,
+      network_id: 1337,
     },
     ganache: {
       host: '127.0.0.1',

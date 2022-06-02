@@ -1,6 +1,7 @@
-# hashstrat
+# HashStrat
 
-A Pool contract that implements a simple crypto investment fund.
+A NextJS app and associated Solidity Smart Contracts implementing a simple crypto investment fund.
+
 
 This is the functionality implemented so far:
 - Users depoist DAI into the pool and receive PoolLP tokens back that represent their share in the pool.
@@ -106,3 +107,34 @@ npm run portfolio-value:kovan
 ## HowTo use the Pool Contract (Polygon)
 
 TODO
+
+
+## Run Frontend (local)
+
+Note: 
+
+
+
+1. Start a local blockchain with Truffle: (port 9545)
+```
+truffle develop
+```
+
+2. Deploy contracts to local blockchain:
+```
+truffle migrate --network develop
+```
+
+3. Start local webserver
+```
+npm run dev
+```
+
+4. Use The Dapp
+- Access the React frontend at [http://localhost:3000/](http://localhost:3000/)
+- Connect Metamask to the local blockchain at http://127.0.0.1:9545/
+- Import owner Account with private key: `6077412bec90b79698977fa6152d4b62fcc71cef932ec06f469ad6904e7c782c`
+
+
+
+

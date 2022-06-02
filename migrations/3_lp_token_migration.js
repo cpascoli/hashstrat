@@ -14,7 +14,11 @@ module.exports = async (deployer, network, [defaultAccount]) => {
   const name = "HashStrat LP Token"
   const symbol = "HASHSTR-LP"
 
-  if (network.startsWith('matic')) {
+  if (network.startsWith('develop')) {
+    const decimals = 6;   // USDC has 6 decimals
+    await deployer.deploy(PoolLPToken, name, symbol, decimals)
+
+  } else if (network.startsWith('matic')) {
     const decimals = 6;   // USDC has 6 decimals
     deployer.deploy(PoolLPToken, name, symbol, decimals)
   } else if (network.startsWith('kovan')) {

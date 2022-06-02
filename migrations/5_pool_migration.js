@@ -20,7 +20,36 @@ module.exports = async (deployer, network, [defaultAccount]) => {
 
   console.log("deploying Pool to ", network)
 
-  if (network.startsWith('matic')) {
+  if (network.startsWith('develop')) {
+   
+    const UniswapV2Router = artifacts.require("UniswapV2Router");
+    const USDCP = artifacts.require("USDCP");
+    const WETH = artifacts.require("WETH");
+
+    const uniswap = await UniswapV2Router.deployed()
+    const pricefeed = await PriceConsumerV3.deployed()
+    const weth = await WETH.deployed()
+    const usdcp = await USDCP.deployed()
+    const lptoken = await PoolLPToken.deployed()
+    const strategy = await RebalancingStrategyV1.deployed()
+
+    await deployer.deploy(Pool, 
+      uniswap.address, 
+      pricefeed.address, 
+      usdcp.address, 
+      weth.address, 
+      lptoken.address, 
+      strategy.address,
+      24 * 60 * 60 // run strategy once a day
+    )
+
+    const pool = await Pool.deployed()
+    await lptoken.addMinter(pool.address)
+    //await lptoken.renounceMinter()
+
+    console.log("Pool is Minter: ", (await lptoken.isMinter(pool.address)) )
+    
+  } else if (network.startsWith('matic')) {
 
     const lptoken = await PoolLPToken.deployed()
     const strategy = await RebalancingStrategyV1.deployed()

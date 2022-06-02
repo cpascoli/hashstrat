@@ -13,7 +13,23 @@ module.exports = async (deployer, network, [defaultAccount]) => {
 
   console.log("deploying RebalancingStrategyV1 to ", network)
 
-  if (network.startsWith('matic')) {
+  if (network.startsWith('develop')) {
+   
+    const USDCP = artifacts.require("USDCP");
+    const WETH = artifacts.require("WETH");
+    const weth = await WETH.deployed()
+    const usdcp = await USDCP.deployed()
+
+    await deployer.deploy(
+      RebalancingStrategyV1,
+      usdcp.address, 
+      weth.address,
+      60,   // target portfolio 60% WETH / 40% USDC
+      2,    // 15% seems a good rebalancing threshold but we use 2% for kovan tests
+    )
+    console.log("RebalancingStrategyV1 deploying to ", network)
+    
+  } else if (network.startsWith('matic')) {
     deployer.deploy(
       RebalancingStrategyV1,
       USDC_MATIC, 

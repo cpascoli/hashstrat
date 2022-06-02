@@ -7,3 +7,5 @@ package-lock.json
 .env_matic
 .env_matic_test
 
+client/.next
+client/web3/artifacts
