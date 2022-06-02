@@ -4,11 +4,12 @@ import { Alert } from 'react-bootstrap'
 
 import { getBalance as getBalancePoolLP, getAllowance as getAllowancePoolLP } from "../web3/pool_lp"
 import { getBalance as getBalanceUSDC, getAllowance as getAllowanceUSDC } from "../web3/usdc"
+import { getPortfolioValue } from "../web3/pool"
 
 import Header from "../components/Header" 
 import { Page, Center } from "../components/Layout"
 import { AlertDismissible } from "../components/AlertDismissible"
-// import StakeView from "../components/StakeView"
+import DepositWithdrawView from "../components/DepositWithdrawView"
 
 
 // add bootstrap css 
@@ -61,10 +62,17 @@ export default class IndexPage extends React.Component {
         this.setState({
             balancePoolLP: data.units
         })
+        return getPortfolioValue()
+    }).then(data => {
+        this.setState({
+            portfolioValue: data.units
+        })
     }).catch(error => {
         this.setState({ error: error.message })
     })
 
+
+    
 
   }
 
@@ -99,7 +107,7 @@ export default class IndexPage extends React.Component {
   render() {
 
     console.log(">>>> render",  this.state)
-    const  { accountConnected, balanceUSDC, balancePoolLP } =  this.state
+    const  { accountConnected, balanceUSDC, portfolioValue, balancePoolLP } =  this.state
 
     if (!accountConnected) return (
       <Page>
@@ -125,12 +133,17 @@ export default class IndexPage extends React.Component {
                 { this.state.error && <AlertDismissible variant="danger" title="Error"> {this.state.error} </AlertDismissible> }
                 { this.state.info && <AlertDismissible variant="info" title={this.state.info.title}>{this.state.info.detail}</AlertDismissible> }
 
-                    Hello!
+                    <div className="w-100 divisor" > </div>
 
+                    <DepositWithdrawView
+                      balanceUSDC={balanceUSDC}
+                      portfolioValue={portfolioValue}
 
-                    <p> balanceUSDC: {balanceUSDC} </p>
-
-                    <p> balancePoolLP: {balancePoolLP} </p>
+                      handleSuccess={(result) => this.handleSuccess(result)} 
+                      handleError={(error, message) => this.handleError(error, message)}
+                      allowanceUpdated={() => this.handleAllowanceUpdated()}
+          
+                    />
 
             </Center>
 
