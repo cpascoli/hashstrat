@@ -7,23 +7,51 @@ import "./IStrategy.sol";
 import "./../IPool.sol";
 import "../IPriceFeed.sol";
 
-
+/**
+  A simple rebalancing strategy for a portfolio of 2 tokens.
+  When the value of one of the tokens grows above (targetInvestPerc + rebalancingThreshold)
+  or drops below (targetInvestPerc - rebalancingThreshold) then the strategy returns the amount
+  of tokens to BUY or SELL in order to rebalance the portfolio.
+  This strategy can be used, for example, to maintain an ETH/USD portfolio at 60%/40%.
+  If 'rebalancingThreshold' is set at 10%, wHen the vaue of ETH (measured in USD) grows above 70%,
+  or drops below 50%, the portfoio is rebalanced to the original 60%/40% allocation.
+ */
 contract RebalancingStrategyV1 is IStrategy, Ownable {
 
-    IERC20Metadata internal depositToken;
-    IERC20Metadata internal investToken;
+    event StrategyInfo( uint investPerc, uint investTokenValue, uint upperBound, uint lowerBound);
 
     uint public maxPriceAge = 6 * 60 * 60; // use prices old 6h max (in Kovan prices are updated every few hours)
     uint public targetInvestPerc;  // [0-100] interval
     uint public rebalancingThreshold; // [0-100] interval
 
-    event StrategyInfo( uint investPerc, uint investTokenValue, uint upperBound, uint lowerBound);
+    IPool public pool;
+    IPriceFeed public feed;
+    IERC20Metadata public depositToken;
+    IERC20Metadata public investToken;
 
-    constructor(address _depositTokenAddress, address _investTokenAddress, uint _targetInvestPerc, uint _rebalancingThreshold) public {
+   
+    constructor(
+        address _poolAddress,
+        address _feedAddress,
+        address _depositTokenAddress,
+        address _investTokenAddress,
+        uint _targetInvestPerc,
+        uint _rebalancingThreshold
+    ) public {
+        pool = IPool(_poolAddress);
+        feed = IPriceFeed(_feedAddress);
         depositToken = IERC20Metadata(_depositTokenAddress);
         investToken = IERC20Metadata(_investTokenAddress);
         targetInvestPerc = _targetInvestPerc;
         rebalancingThreshold = _rebalancingThreshold;
+    }
+
+    function name() public override view returns(string memory _) {
+        return "RebalancingStrategyV1";
+    }
+
+    function description() public override view returns(string memory _) {
+        return "A simple rebalancing strategy to rebalance a 2 token portfolio";
     }
 
     function setTargetInvestPerc(uint _targetInvestPerc) public onlyOwner {
@@ -38,26 +66,20 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         maxPriceAge = secs;
     }
 
-    function name() public override view returns(string memory _) {
-        return "RebalancingStrategyV1";
-    }
-
-    function description() public override view returns(string memory _) {
-        return "A simple rebalancing strategy";
+    function setPool(uint _poolAddress) public onlyOwner {
+        pool = IPool(_poolAddress);
     }
 
 
-    function evaluate(address poolAddress, address feedAddress) public override returns(StrategyAction, uint) {
+    function evaluate() public override returns(StrategyAction, uint) {
 
-        IPriceFeed feed = IPriceFeed(feedAddress);
-        require(poolAddress != address(0), "poolAddress is 0");
+        require(address(pool) != address(0), "poolAddress is 0");
         require(feed.getLatestPrice() >= 0, "Price is negative");
         
         uint time = feed.getLatestTimestamp();
         // don't use old prices
         if (block.timestamp > time && (block.timestamp - time) > maxPriceAge) return (StrategyAction.NONE, 0);
 
-        IPool pool = IPool(poolAddress);
         uint poolValue = pool.totalPortfolioValue();
         if (poolValue == 0) return (StrategyAction.NONE, 0);
 

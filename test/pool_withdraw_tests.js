@@ -36,12 +36,13 @@ contract("Pool", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
-        strategy = await RebalancingStrategyV1.new(usdcp.address, weth.address, 60, 20)
+        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', priceFeed.address, usdcp.address, weth.address, 60, 20)
         pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
-        await uniswap.setPoolAddress(pool.address) //FIXME this is probably unnecessary
+        await uniswap.setPool(pool.address) //FIXME this is probably unnecessary
+        await strategy.setPool(pool.address)
 
         // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
         await usdcp.transfer(uniswap.address, toUsdc('10000'))

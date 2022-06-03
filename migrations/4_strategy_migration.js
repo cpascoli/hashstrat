@@ -1,5 +1,6 @@
 
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
+const PriceConsumerV3 = artifacts.require("PriceConsumerV3");
 
 // Kovan
 const DAI_KOVAN = '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa'
@@ -19,9 +20,12 @@ module.exports = async (deployer, network, [defaultAccount]) => {
     const WETH = artifacts.require("WETH");
     const weth = await WETH.deployed()
     const usdcp = await USDCP.deployed()
+    const pricefeed = await PriceConsumerV3.deployed()
 
     await deployer.deploy(
       RebalancingStrategyV1,
+      '0x0000000000000000000000000000000000000000', // pool address not known yet
+      pricefeed.address,
       usdcp.address, 
       weth.address,
       60,   // target portfolio 60% WETH / 40% USDC
@@ -32,6 +36,8 @@ module.exports = async (deployer, network, [defaultAccount]) => {
   } else if (network.startsWith('matic')) {
     deployer.deploy(
       RebalancingStrategyV1,
+      '0x0000000000000000000000000000000000000000', // pool address not known yet
+      pricefeed.address,
       USDC_MATIC, 
       WETH_MATIC,
       60,   // target portfolio 60% WETH / 40% USDC
@@ -40,6 +46,8 @@ module.exports = async (deployer, network, [defaultAccount]) => {
   } else if (network.startsWith('kovan')) {
     deployer.deploy(
       RebalancingStrategyV1,
+      '0x0000000000000000000000000000000000000000', // pool address not known yet
+      pricefeed.address,
       DAI_KOVAN, 
       WETH_KOVAN,
       60,   // target portfolio 60% WETH / 40% DAI

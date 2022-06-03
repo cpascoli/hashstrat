@@ -41,7 +41,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     }
 
     // Set the poolAddress (probably reduntant)
-    function setPoolAddress(address _poolAddress) external {
+    function setPool(address _poolAddress) external {
         poolAddress = _poolAddress;
     }
 
