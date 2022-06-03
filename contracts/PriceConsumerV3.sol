@@ -3,12 +3,7 @@
 pragma solidity ^0.6.6;
 
 import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-
-interface IPriceFeed {
-    function getLatestPrice() external view returns (int);
-    function getLatestTimestamp() external view returns (uint);
-    function decimals() external view returns (uint8);
-}
+import "./IPriceFeed.sol";
 
 
 contract PriceConsumerV3 is IPriceFeed {

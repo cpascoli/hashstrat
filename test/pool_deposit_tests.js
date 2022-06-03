@@ -72,7 +72,7 @@ contract("Pool", accounts => {
 
         // deposit 100 USDCP 
         let depositAmount =  toWei('100')
-        await usdcp.approve(pool.address, depositAmount)
+        await usdcp.approve(pool.address, depositAmount, { from: defaultAccount })
         await pool.deposit(depositAmount, { from: defaultAccount })
 
         let balanceAfter = await usdcp.balanceOf(pool.address)

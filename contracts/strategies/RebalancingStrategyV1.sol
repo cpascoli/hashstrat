@@ -2,21 +2,26 @@
 pragma solidity ^0.6.6;
 
 import "../../node_modules/@openzeppelin/contracts/access/Ownable.sol";
-import "../../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../IERC20Metadata.sol";
 import "./IStrategy.sol";
+import "./../IPool.sol";
+import "../IPriceFeed.sol";
+
 
 contract RebalancingStrategyV1 is IStrategy, Ownable {
 
-    IERC20 internal depositToken;
-    IERC20 internal investToken;
+    IERC20Metadata internal depositToken;
+    IERC20Metadata internal investToken;
 
     uint public maxPriceAge = 6 * 60 * 60; // use prices old 6h max (in Kovan prices are updated every few hours)
-    uint public targetInvestPerc;
-    uint public rebalancingThreshold;
+    uint public targetInvestPerc;  // [0-100] interval
+    uint public rebalancingThreshold; // [0-100] interval
+
+    event StrategyInfo( uint investPerc, uint investTokenValue, uint upperBound, uint lowerBound);
 
     constructor(address _depositTokenAddress, address _investTokenAddress, uint _targetInvestPerc, uint _rebalancingThreshold) public {
-        depositToken = IERC20(_depositTokenAddress);
-        investToken = IERC20(_investTokenAddress);
+        depositToken = IERC20Metadata(_depositTokenAddress);
+        investToken = IERC20Metadata(_investTokenAddress);
         targetInvestPerc = _targetInvestPerc;
         rebalancingThreshold = _rebalancingThreshold;
     }
@@ -41,50 +46,86 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         return "A simple rebalancing strategy";
     }
 
-    function evaluate(address poolAddress, int investTokenPrice, uint time) public override view returns(StrategyAction action, uint amountIn) {
 
-        require(investTokenPrice >= 0, "Price is negative");
+    function evaluate(address poolAddress, address feedAddress) public override returns(StrategyAction, uint) {
+
+        IPriceFeed feed = IPriceFeed(feedAddress);
         require(poolAddress != address(0), "poolAddress is 0");
-
+        require(feed.getLatestPrice() >= 0, "Price is negative");
+        
+        uint time = feed.getLatestTimestamp();
         // don't use old prices
         if (block.timestamp > time && (block.timestamp - time) > maxPriceAge) return (StrategyAction.NONE, 0);
 
-        uint price = uint(investTokenPrice);
+        IPool pool = IPool(poolAddress);
+        uint poolValue = pool.totalPortfolioValue();
+        if (poolValue == 0) return (StrategyAction.NONE, 0);
 
-        uint256 depositTokenBalance = depositToken.balanceOf(poolAddress);
-        uint256 investTokenBalance = investToken.balanceOf(poolAddress);
+        StrategyAction action = StrategyAction.NONE;
+        uint amountIn;
+        
+        uint investTokenValue = pool.investedTokenValue();
+        uint investPerc = (100 * investTokenValue / poolValue); // the % of invest tokens in the pool
 
-        uint depositTokenValue = depositTokenBalance;
-        uint investTokenValue = investTokenBalance * price;
-        uint poolValue = investTokenValue + depositTokenValue;
 
-        action = StrategyAction.NONE;
-        uint investPerc = (100 * investTokenValue / poolValue);
-
-        if (investPerc > targetInvestPerc) {
-            // delta := 85 - 60
+        if (investPerc >= targetInvestPerc + rebalancingThreshold) {
+            uint price = uint(feed.getLatestPrice());
             uint deltaPerc = investPerc - targetInvestPerc;
-            if (deltaPerc >= rebalancingThreshold) {   // 25%
-                // need to sell some investment tokens for deposit tokens
-                // calcualte amount of investment tokens to SWAP
-                action = StrategyAction.SELL;
-                uint targetInvestTokenValue = poolValue * targetInvestPerc / 100;
-                amountIn = (investTokenValue - targetInvestTokenValue) / price;
-            }
-        } else {
-            uint targetDepositPerc = 100 - targetInvestPerc;
-            uint depositPerc = (100 * depositTokenValue / poolValue);
-            uint deltaPerc = depositPerc - targetDepositPerc;
-            if (deltaPerc >= rebalancingThreshold) {    // 25%
-                // need to sell some deposit tokens for invest tokens
-                // calculate amount of deposit tokens to SWAP
-                action = StrategyAction.BUY;
-                uint targetDepositValue = poolValue * targetDepositPerc / 100;
-                amountIn = depositTokenValue - targetDepositValue;
+           
+            require(deltaPerc >= 0 && deltaPerc <= 100, "Invalid deltaPerc SELL side");
+
+            // need to SELL some investment tokens
+            action = StrategyAction.SELL;
+            uint targetInvestTokenValue = poolValue * targetInvestPerc / 100;
+            uint deltaTokenPrecision = decimalDiffFactor();  // this factor accounts for difference in decimals between the 2 tokens
+            uint pricePrecision = 10 ** uint(feed.decimals());
+            
+            // calcualte amount of investment tokens to sell
+            if (investToken.decimals() >= depositToken.decimals()) {
+                amountIn = pricePrecision * deltaTokenPrecision * (investTokenValue - targetInvestTokenValue) / price;
+            } else {
+                amountIn = pricePrecision * (investTokenValue - targetInvestTokenValue) / price / deltaTokenPrecision;
             }
         }
+        
+        // uint depositPerc = 100 - investPerc;   // 100 * depositTokenValue / poolValue; |||  100 - investPerc;
+        // uint targetDepositPerc = 100 - targetInvestPerc;
+
+
+        if (investPerc <= (targetInvestPerc - rebalancingThreshold)) {
+            
+            uint deltaPerc = targetInvestPerc - investPerc;
+            require(deltaPerc >= 0 && deltaPerc <= 100, "Invalid deltaPerc BUY side");
+            
+            // need to BUY some invest tokens
+            // calculate amount of deposit tokens to sell
+            action = StrategyAction.BUY;
+            //uint depositPerc = 100 - investPerc;
+            uint targetDepositPerc = 100 - targetInvestPerc;
+            uint targetDepositValue = poolValue * targetDepositPerc / 100;
+
+            uint depositTokenValue = pool.depositTokenValue();
+            require(depositTokenValue >= targetDepositValue, "Invalid amount of deposit tokens to sell");
+
+            amountIn = depositTokenValue - targetDepositValue;
+        }
+
+        emit StrategyInfo(investPerc, investTokenValue, (targetInvestPerc - rebalancingThreshold), (targetInvestPerc + rebalancingThreshold));
 
         return (action, amountIn);
+    }
+
+    function decimalDiffFactor() internal view returns (uint) {
+
+        uint depositTokenDecimals = uint(depositToken.decimals());
+        uint investTokensDecimals = uint(investToken.decimals());
+   
+        //portoflio value is the sum of deposit token value and invest token value in the unit of the deposit token
+        uint diff = (investTokensDecimals >= depositTokenDecimals) ?
+             10 ** (investTokensDecimals - depositTokenDecimals):
+             10 ** (depositTokenDecimals - investTokensDecimals);
+
+        return diff;
     }
 
 }
