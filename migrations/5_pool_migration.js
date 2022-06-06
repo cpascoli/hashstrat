@@ -46,7 +46,9 @@ module.exports = async (deployer, network, [defaultAccount]) => {
     const pool = await Pool.deployed()
     await lptoken.addMinter(pool.address)
     await lptoken.renounceMinter()
-    await pricefeed.setPool(pool.address)
+
+    await uniswap.setPool(pool.address) //FIXME this is probably unnecessary
+    await strategy.setPool(pool.address)
 
     console.log("Pool is Minter: ", (await lptoken.isMinter(pool.address)) )
     
@@ -54,7 +56,6 @@ module.exports = async (deployer, network, [defaultAccount]) => {
 
     const lptoken = await PoolLPToken.deployed()
     const strategy = await RebalancingStrategyV1.deployed()
-    const pricefeed = await PriceConsumerV3.deployed()
 
     await deployer.deploy(Pool, 
       QUICKSWAP_V2_ROUTER_MATIC, 
@@ -69,7 +70,7 @@ module.exports = async (deployer, network, [defaultAccount]) => {
     const pool = await Pool.deployed()
     await lptoken.addMinter(pool.address)
     //await lptoken.renounceMinter()
-    await pricefeed.setPool(pool.address)
+    await strategy.setPool(pool.address)
 
     console.log("Pool is Minter: ", (await lptoken.isMinter(pool.address)) )
 
@@ -77,7 +78,6 @@ module.exports = async (deployer, network, [defaultAccount]) => {
 
     const lptoken = await PoolLPToken.deployed()
     const strategy = await RebalancingStrategyV1.deployed()
-    const pricefeed = await PriceConsumerV3.deployed()
 
     await deployer.deploy(Pool, 
       UNISWAP_V2_ROUTER_KOVAN, 
@@ -92,7 +92,7 @@ module.exports = async (deployer, network, [defaultAccount]) => {
     const pool = await Pool.deployed()
     await lptoken.addMinter(pool.address)
     await lptoken.renounceMinter()
-    await pricefeed.setPool(pool.address)
+    await strategy.setPool(pool.address)
 
     console.log("Pool is Minter: ", (await lptoken.isMinter(pool.address)) )
   } else {

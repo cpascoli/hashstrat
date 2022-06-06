@@ -34,7 +34,9 @@ module.exports = async (deployer, network, [defaultAccount]) => {
     console.log("RebalancingStrategyV1 deploying to ", network)
     
   } else if (network.startsWith('matic')) {
-    deployer.deploy(
+    const pricefeed = await PriceConsumerV3.deployed()
+    
+    await deployer.deploy(
       RebalancingStrategyV1,
       '0x0000000000000000000000000000000000000000', // pool address not known yet
       pricefeed.address,
@@ -44,7 +46,9 @@ module.exports = async (deployer, network, [defaultAccount]) => {
       2,    // 15% seems a good rebalancing threshold but we use 2% for kovan tests
     )
   } else if (network.startsWith('kovan')) {
-    deployer.deploy(
+    const pricefeed = await PriceConsumerV3.deployed()
+    
+    await deployer.deploy(
       RebalancingStrategyV1,
       '0x0000000000000000000000000000000000000000', // pool address not known yet
       pricefeed.address,

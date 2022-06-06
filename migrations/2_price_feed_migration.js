@@ -28,7 +28,7 @@ module.exports = async (deployer, network, [defaultAccount]) => {
     await deployer.deploy(PriceConsumerV3, uniswap.address);
 
   } else if (network.startsWith('matic')) {
-    deployer.deploy(PriceConsumerV3, ETH_USD_AGGREGATOR_MATIC);
+    await deployer.deploy(PriceConsumerV3, ETH_USD_AGGREGATOR_MATIC);
   } else if (network.startsWith('kovan')) {
     deployer.deploy(PriceConsumerV3, ETH_USD_AGGREGATOR_KOVAN);
   } else {
