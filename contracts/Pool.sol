@@ -28,8 +28,8 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     * Use an interval in seconds and a timestamp to slow execution of Upkeep
     */
     uint public slippageThereshold = 500; // allow for 5% slippage on swaps (aka should receive at least 95% of the expected token amount)
-    uint public immutable interval;
-    uint public lastTimeStamp;
+    uint public immutable interval; // Upkeep interval
+    uint public lastTimeStamp;      // last Upkeep timestamp
     uint public performUpkeepCounter;
 
     IUniswapV2Router uniswapV2Router;
