@@ -23,7 +23,6 @@ export default class Header extends React.Component {
             // Handle the new chain.
             // Correctly handling chain changes can be complicated.
             // We recommend reloading the page unless you have good reason not to.
-
             console.log("chainId changed:", chainId)
 
             window.location.reload();
@@ -45,8 +44,12 @@ export default class Header extends React.Component {
     connect = () => {
         ethereum.request({ method: 'eth_requestAccounts' }).then(accounts => {
             let account = accounts.length > 0? accounts[0] : undefined
-            this.reload()
-            this.handleAccount(account)
+            if (account) {
+                this.reload()
+                this.handleAccount(account)
+            } else {
+                console.log(">>> connect() - account ", account)
+            }
         })
     }
 
@@ -91,21 +94,18 @@ export default class Header extends React.Component {
 
 
     loadBlockInfo = () => {
-
-        // myWeb3.getNetwork().then( data => {
-        //     const { chainId, name } = data;
-        //     console.log("NETWORK: ", chainId, name) // 42
-        // })
-
         myWeb3.eth.net.getId().then( id => {
             console.log("NETWORK ID", id)
         })
-
-        myWeb3.eth.getBlock().then((block) => {
+        myWeb3.eth.getBlockNumber().then( number => {
+            return myWeb3.eth.getBlock(number)
+        }).then((block) => {
             this.setState({
                 blockNumber: block.number,
                 blockTimestamp: block.timestamp
             })
+        }).catch((error) => {
+            this.setState({ error: error.message })
         })
     }
 

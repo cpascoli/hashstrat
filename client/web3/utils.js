@@ -1,21 +1,17 @@
 import { myWeb3, eth } from './provider'
 
 // from int to string
-export const toTokenDecimals = async (token, amount) => {
+export const toTokenDecimals = async (decimals, amount) => {
     
-    const decimals = await token.decimals.call()
-    const digits =  myWeb3.utils.toBN('10').pow(decimals); 
+    const digits =  myWeb3.utils.toBN('10').pow( myWeb3.utils.toBN(decimals) ); 
     const factor = myWeb3.utils.toBN(10000)
     const tokenDecimals = myWeb3.utils.toBN( Math.floor(amount * 10000) ).mul(digits).div(factor).toString()
-
-    console.log(">>>> toTokenDecimals", amount, tokenDecimals)
     return tokenDecimals
 }
 
 // from string to int 
-export const toTokenUnits = async (token, amount) => {
-    const decimals = await token.decimals.call()
-    const digits =  myWeb3.utils.toBN('10').pow(decimals); 
+export const toTokenUnits = async (decimals, amount) => {
+    const digits =  myWeb3.utils.toBN('10').pow( myWeb3.utils.toBN(decimals) ); 
     const unitsString = myWeb3.utils.toBN(amount).div(digits).toString()
     const units = parseInt(unitsString)
     
@@ -23,9 +19,8 @@ export const toTokenUnits = async (token, amount) => {
 }
 
 // from string to number with 'precision' decimals
-export const toNumber = async (token, amount, precision) => {
-    const decimals = await token.decimals.call()
-    const digits =  myWeb3.utils.toBN('10').pow(decimals); 
+export const toNumber = async (decimals, amount, precision) => {
+    const digits =  myWeb3.utils.toBN('10').pow( myWeb3.utils.toBN(decimals) ); 
     const extra =  myWeb3.utils.toBN('10').pow(myWeb3.utils.toBN(precision)); 
     const number = myWeb3.utils.toBN(amount).mul(extra).div(digits).toNumber()
     const decimal = number / extra.toNumber()
@@ -41,8 +36,7 @@ export const getAccount = async () => {
     const accounts = await eth.getAccounts()
     if (accounts.length == 0) {
         console.error("No account found", accounts)
-        //throw Error("No Ethereum account connected. Please connect a wallet and try again!")
-        return
+        throw Error("No Ethereum account connected. Please connect a wallet and try again!")
     }
     return accounts[0]
 }
@@ -64,4 +58,12 @@ export const convertHMS = (value) => {
     if (seconds < 10) {seconds = "0"+seconds;}
 
     return hours+'h '+minutes+'m '+seconds+'s';
+}
+
+export const isLocal = () => {
+    return process.env.NEXT_PUBLIC_NETWORK == 'LOCAL'
+}
+
+export const isPolygon = () => {
+    return process.env.NEXT_PUBLIC_NETWORK == 'POLYGON'
 }

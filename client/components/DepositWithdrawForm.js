@@ -87,7 +87,6 @@ export default class DepositWithdrawForm extends React.Component {
         deposit(value).then(result => {
             this.props.handleSuccess(`Deposit started. Transaction id: ${result.tx}`)
         }).catch((error) => {
-            console.log('>>> onSubmit startStake error:', error);
             const message = this.getError(error)
             this.props.handleError(error, message)
         })
@@ -104,7 +103,6 @@ export default class DepositWithdrawForm extends React.Component {
         withdraw(value).then(result => {
             this.props.handleSuccess(`Withdrawal started. Transaction id: ${result.tx}`)
         }).catch((error) => {
-            console.log('>>> submitWithdrawal error:', error);
             const message = this.getError(error)
             this.props.handleError(error, message)
         })
@@ -112,11 +110,10 @@ export default class DepositWithdrawForm extends React.Component {
 
     getError = (error) => {
         switch (true) {
-            case error.message.includes('No active reward phase found'): return "No active reward phase found"
-            case error.message.includes('Invalid reward amount'): return "Invalid reward amount"
-            case error.message.includes('Invalid reward interval'): return "Invalid reward interval"
-            default: return error.message
+            case error.message.includes('User denied transaction signaturel'): return "User denied transaction signature"
         }
+
+        return error.message
     }
 
     parseAmount = (amount) => {

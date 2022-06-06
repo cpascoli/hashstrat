@@ -62,14 +62,14 @@ export default class DepositWithdrawView extends React.Component {
     this.props.allowanceUpdated()
   }
 
-  handleSuccess = () => {
+  handleSuccess = (result) => {
     this.hideUpdateStakeModalPreseed()
-    this.props.handleSuccess()
+    this.props.handleSuccess(result)
   }
 
-  handleError = () => {
+  handleError = (error, message) => {
     this.hideUpdateStakeModalPreseed()
-    this.props.handleError()
+    this.props.handleError(error, message)
   }
 
 

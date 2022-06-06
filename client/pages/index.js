@@ -2,8 +2,8 @@
 import React from 'react'
 import { Alert } from 'react-bootstrap'
 
-import { getBalance as getBalancePoolLP, getAllowance as getAllowancePoolLP } from "../web3/pool_lp"
-import { getBalance as getBalanceUSDC, getAllowance as getAllowanceUSDC } from "../web3/usdc"
+import { getBalance as getBalancePoolLP } from "../web3/pool_lp"
+import { getBalance as getBalanceUSDC } from "../web3/usdc"
 import { getPortfolioValue } from "../web3/pool"
 
 import Header from "../components/Header" 
@@ -24,13 +24,14 @@ export default class IndexPage extends React.Component {
 
       }
       this.headerRef= React.createRef();
+
+      this.handleSuccess = this.handleSuccess.bind(this)
+      this.handleError = this.handleError.bind(this)
+      this.handleAllowanceUpdated = this.handleAllowanceUpdated.bind(this)
   }
 
   componentDidMount() {
     this.reload()
-
-
-
   } 
 
 
@@ -71,13 +72,10 @@ export default class IndexPage extends React.Component {
         this.setState({ error: error.message })
     })
 
-
-    
-
   }
 
 
-  async handleAllowanceUpdated() {
+  handleAllowanceUpdated = () => {
       console.log(">>> handleAllowanceUpdated() -- TODO")
   }
 
@@ -88,7 +86,7 @@ export default class IndexPage extends React.Component {
       this.setState({
           info: { 
               title: "Success!", 
-              detail: result //JSON.stringify(result, null, 2),
+              detail: JSON.stringify(result, null, 2),
           }
       })
   }
@@ -100,14 +98,14 @@ export default class IndexPage extends React.Component {
       } else if (error && error.message) {
           this.setState({error: error.message})
       } else {
-          this.setState({error: `An error occurred (${error})`})
+          const msg = JSON.stringify(error, null, 2)
+          this.setState({error: `An error occurred (${msg})`})
       }
   }
 
   render() {
 
-    console.log(">>>> render",  this.state)
-    const  { accountConnected, balanceUSDC, portfolioValue, balancePoolLP } =  this.state
+    const { accountConnected, balanceUSDC, portfolioValue, balancePoolLP } =  this.state
 
     if (!accountConnected) return (
       <Page>
@@ -139,9 +137,9 @@ export default class IndexPage extends React.Component {
                       balanceUSDC={balanceUSDC}
                       portfolioValue={portfolioValue}
 
-                      handleSuccess={(result) => this.handleSuccess(result)} 
-                      handleError={(error, message) => this.handleError(error, message)}
-                      allowanceUpdated={() => this.handleAllowanceUpdated()}
+                      handleSuccess={this.handleSuccess} 
+                      handleError={this.handleError}
+                      allowanceUpdated={this.handleAllowanceUpdated}
           
                     />
 

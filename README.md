@@ -62,11 +62,13 @@ npm run test
 Kovan:
 ```bash
 npm run migrate:kovan
+npm run migrate:kovan:reset
 ```
 
 Polygon:
 ```bash
 npm run migrate:matic
+npm run migrate:matic:reset
 ```
 
 
@@ -74,7 +76,7 @@ npm run migrate:matic
 
 Kovan:
 ```bash
-npm run verify:kovan
+npm run verify:kovan  
 ```
 
 Polygon:
