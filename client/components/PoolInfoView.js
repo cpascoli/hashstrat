@@ -1,29 +1,27 @@
 import { Form, Container, Row, Col } from 'react-bootstrap'
 
-const PoolInfoView = ({ deposits, withdrawals, depositTokenBalance, investTokenBalance, totalPortfolioValue, investedTokenValue, depositTokenSymbol, investTokenSymbol }) => (
+const PoolInfoView = ({ deposits, withdrawals, depositTokenBalance, investTokenBalance, totalPortfolioValue, investedTokenValue, depositTokenSymbol, investTokenSymbol }) => {
+  
+  const roi =  Math.round( 10000 * (withdrawals + totalPortfolioValue - deposits) / deposits ) / 100;
+
+
+  return (
 
   <Container className="border border-primary" >
-      <Form.Group as={Row} controlId="deposits">
-        <Form.Label column  style={{minWidth:250}} className="text-start">Total Deposits</Form.Label>
-        <Col />
-        <Form.Label column  style={{minWidth:200}} className="text-end">
-          { deposits } { depositTokenSymbol }
-        </Form.Label>
-      </Form.Group>
-
-      <Form.Group as={Row} controlId="withdrawals">
-        <Form.Label column  style={{minWidth:250}} className="text-start">Total Withdrawals</Form.Label>
-        <Col />
-        <Form.Label column  style={{minWidth:200}} className="text-end">
-        { withdrawals } { depositTokenSymbol }
-        </Form.Label>
-      </Form.Group>
 
       <Form.Group as={Row} controlId="value">
         <Form.Label column  style={{minWidth:250}} className="text-start">Pool Value</Form.Label>
         <Col />
         <Form.Label column  style={{minWidth:200}} className="text-end">
         { totalPortfolioValue } { depositTokenSymbol }
+        </Form.Label>
+      </Form.Group>
+
+      <Form.Group as={Row} controlId="value">
+        <Form.Label column  style={{minWidth:250}} className="text-start">ROI</Form.Label>
+        <Col />
+        <Form.Label column  style={{minWidth:200}} className="text-end">
+          { roi } %
         </Form.Label>
       </Form.Group>
 
@@ -44,7 +42,24 @@ const PoolInfoView = ({ deposits, withdrawals, depositTokenBalance, investTokenB
         </Form.Label>
       </Form.Group>
 
+      <Form.Group as={Row} controlId="deposits">
+        <Form.Label column  style={{minWidth:250}} className="text-start">Total Deposits</Form.Label>
+        <Col />
+        <Form.Label column  style={{minWidth:200}} className="text-end">
+          { deposits } { depositTokenSymbol }
+        </Form.Label>
+      </Form.Group>
+
+      <Form.Group as={Row} controlId="withdrawals">
+        <Form.Label column  style={{minWidth:250}} className="text-start">Total Withdrawals</Form.Label>
+        <Col />
+        <Form.Label column  style={{minWidth:200}} className="text-end">
+        { withdrawals } { depositTokenSymbol }
+        </Form.Label>
+      </Form.Group>
+
   </Container>
-)
+)}
+
 
 export default PoolInfoView;

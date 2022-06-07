@@ -3,7 +3,7 @@ import {  Wrapped } from "../components/Layout"
 
 
 const PortfolioInfoView = ({ deposited, withdrawn, portfolioValue, depositTokenSymbol }) => { 
-  const roi =  Math.round( 10000 * (withdrawn + portfolioValue) / deposited ) / 100;
+  const roi =  Math.round( 10000 * (withdrawn + portfolioValue - deposited) / deposited ) / 100;
   
   return (
 
