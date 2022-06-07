@@ -59,8 +59,6 @@ export default class IndexPage extends React.Component {
 
     getPoolInfo().then(data => {
 
-      // deposits, withdrawals, depositTokenAmount, investTokenAmount, poolValue,  investedTokenValue, investTokenSymbol, depositTokenSymbol
-      
       this.setState({
         deposits: data.deposits,
         withdrawals: data.withdrawals,
@@ -84,7 +82,6 @@ export default class IndexPage extends React.Component {
         })
         return getPortfolioInfo()
     }).then(data => {
-      ///TODO
         this.setState({
           deposited: data.deposited,
           withdrawn: data.withdrawn,
@@ -107,6 +104,7 @@ export default class IndexPage extends React.Component {
       this.headerRef.current.reload()
       this.reload()
       this.setState({
+          showInfo: true,
           info: { 
               title: "Success!", 
               detail: JSON.stringify(result, null, 2),
@@ -116,14 +114,26 @@ export default class IndexPage extends React.Component {
 
 
   handleError = (error, message) => {
+      console.log("handleError() - error:", error, "message:", message)
+
       if (message) {
-          this.setState({error: message})
+          this.setState({error: message, showError: true})
       } else if (error && error.message) {
-          this.setState({error: error.message})
+          this.setState({error: error.message, showError: true})
       } else {
           const msg = JSON.stringify(error, null, 2)
-          this.setState({error: `An error occurred (${msg})`})
+          this.setState({error: `An error occurred (${msg})`, showError: true})
       }
+  }
+
+  errorDismissed = () => {
+    console.log("Error dismissed!")
+    this.setState({showError: false})
+  }
+
+  infoDismissed = () => {
+    console.log("Info dismissed!")
+    this.setState({showInfo: false})
   }
 
   render() {
@@ -155,9 +165,21 @@ export default class IndexPage extends React.Component {
 
              <div className="w-100 divisor" > </div>
              <Center > 
-                { this.state.error && <AlertDismissible variant="danger" title="Error"> {this.state.error} </AlertDismissible> }
-                { this.state.info && <AlertDismissible variant="info" title={this.state.info.title}>{this.state.info.detail}</AlertDismissible> }
+                    { this.state.error && 
+                      <AlertDismissible variant="danger" title="Error" 
+                            show={this.state.showError} 
+                            buttonAction={() => this.errorDismissed()} > 
+                              {this.state.error} 
+                      </AlertDismissible> 
+                    }
 
+                    { this.state.info && 
+                      <AlertDismissible variant="info" title={this.state.info.title} 
+                            show={this.state.showInfo} 
+                            buttonAction={() => this.infoDismissed()} > 
+                              {this.state.info.detail} 
+                      </AlertDismissible> 
+                    }
 
                     <PortfolioInfoView 
                       deposited={deposited} 

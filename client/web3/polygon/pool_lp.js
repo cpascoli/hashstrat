@@ -42,16 +42,19 @@ export const approve = async (amount) => {
     const decimals = await poolLP.methods.decimals().call()
     const tokenDecimals = await toTokenDecimals(decimals, amount)
   
-    const response = await poolLP.methods.approve(pool_conctract_address, tokenDecimals )
-    .send({
-        from: account,
-    }).once("receipt", (receipt) => {
-       console.log("approve receipt >> ", receipt);
-    }).catch((err) => {
-       console.log(err);
-    });
-    
-    return response
+    return new Promise((resolve, reject) => {
+            poolLP.methods.approve(pool_conctract_address, tokenDecimals ).send({
+            from: account,
+            gasPrice: '50000000000'
+        }).once("receipt", (receipt) => {
+            console.log("approve receipt >> ", receipt);
+            resolve(receipt)
+        }).catch((err) => {
+            console.log("approve error:", err);
+            reject(err)
+        });
+    })
+
 }
   
   

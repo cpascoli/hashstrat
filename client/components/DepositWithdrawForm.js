@@ -3,9 +3,6 @@ import { Container, Row, Col, Form, Button, InputGroup, ButtonToolbar, ButtonGro
 import { getAllowance, approve } from "../web3/usdc"
 import { deposit, withdraw } from "../web3/pool"
 
-
-import { Center } from "../components/Layout"
-
 export default class DepositWithdrawForm extends React.Component {
 
     constructor(props) {
@@ -43,23 +40,30 @@ export default class DepositWithdrawForm extends React.Component {
 
     allowButtonPressed = async () => {
         const amount = Number(this.state.amount)
-        await approve(amount).then(result => {
-            this.checkAllowance(amount).then(allowanceOk => {
+        approve(amount)
+            .then(result => {
+                this.props.handleSuccess(`Allowance increased. Transaction hash: ${result.transactionHash}`)
+                return this.checkAllowance(amount)
+            }).then(allowanceOk => {
                 this.setState({ sufficientAllowance: allowanceOk })
+            }).catch(error => {
+                const message = this.getError(error)
+                console.error('Error approving tokens', message);
+                this.props.handleError(error, message)
             })
-        })
     }
 
     checkAllowance = (amount) => {
         return new Promise((resolve, reject) => {
-            getAllowance().then((allowance) => {
-                const allowanceOk = amount <= allowance
-                resolve(allowanceOk);
-            })
-            .catch((error) => {
-                console.error('Error checking allowance', error);
-                reject(error)
-            })
+            getAllowance()
+                .then((allowance) => {
+                    const allowanceOk = amount <= allowance
+                    resolve(allowanceOk);
+                })
+                .catch((error) => {
+                    console.error('Error checking allowance', error);
+                    reject(error)
+                })
         })
     }
 
@@ -85,7 +89,7 @@ export default class DepositWithdrawForm extends React.Component {
         const value = Number(amount)
         
         deposit(value).then(result => {
-            this.props.handleSuccess(`Deposit started. Transaction id: ${result.tx}`)
+            this.props.handleSuccess(`Deposit started. Transaction hash: ${result.transactionHash}`)
         }).catch((error) => {
             const message = this.getError(error)
             this.props.handleError(error, message)
@@ -101,7 +105,7 @@ export default class DepositWithdrawForm extends React.Component {
         const value = Number(amount)
         
         withdraw(value).then(result => {
-            this.props.handleSuccess(`Withdrawal started. Transaction id: ${result.tx}`)
+            this.props.handleSuccess(`Withdrawal started. Transaction hash: ${result.transactionHash}`)
         }).catch((error) => {
             const message = this.getError(error)
             this.props.handleError(error, message)

@@ -77,15 +77,19 @@ export const deposit = async (amount) => {
     const decimals = await usdcp.methods.decimals().call()
     const tokenDecimals = await toTokenDecimals(decimals, amount)
   
-    const response = await pool.methods
-      .deposit(tokenDecimals)
-      .send({
-          from: account,
-      }).once("receipt", (receipt) => {
-         console.log("approve receipt >> ", receipt);
-      }).catch((err) => {
-         console.log(err);
-      });
+    return new Promise((resolve, reject) => {
+      pool.methods.deposit(tokenDecimals)
+        .send({
+            from: account,
+            gasPrice: '50000000000'
+        }).once("receipt", (receipt) => {
+          console.log("deposit receipt >> ", receipt);
+          resolve(receipt) 
+        }).catch((err) => {
+          console.log("deposit error:", err);
+          reject(err)
+        });
+      })
         
     return response
 }
@@ -97,17 +101,19 @@ export const withdraw = async (amount) => {
     const decimals = await usdcp.methods.decimals().call()
     const tokenDecimals = await toTokenDecimals(decimals, amount)
   
-    const response = await pool.methods
-      .withdraw(tokenDecimals)
-      .send({
-          from: account,
-      }).once("receipt", (receipt) => {
-        console.log("approve receipt >> ", receipt);
-      }).catch((err) => {
-        throw err
-      });
-      
-    return response
+    return new Promise((resolve, reject) => {
+      pool.methods.withdraw(tokenDecimals)
+        .send({
+            from: account,
+            gasPrice: '50000000000'
+        }).once("receipt", (receipt) => {
+          console.log("approve receipt >> ", receipt);
+          resolve(receipt)
+        }).catch((err) => {
+          console.log("withdraw error:", err);
+          reject(err)
+        });
+      })
 }
 
 
