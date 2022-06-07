@@ -1,13 +1,16 @@
-import { getPortfolioValue as getPortfolioValueLocal, deposit as depositLocal, withdraw as withdrawLocal } from './local/pool'
-import { getPortfolioValue as getPortfolioValuePolygon, deposit as depositPolygon, withdraw as withdrawPolygon } from './polygon/pool'
+import { getPoolInfo as getPoolInfoLocal, getPortfolioInfo as getPortfolioInfoLocal, deposit as depositLocal, withdraw as withdrawLocal } from './local/pool'
+import { getPoolInfo as getPoolInfoPolygon, getPortfolioInfo as getPortfolioInfoPolygon, deposit as depositPolygon, withdraw as withdrawPolygon } from './polygon/pool'
 import { isPolygon, isLocal } from './utils'
 
 
+export const getPoolInfo = async () => {
+    if (isLocal()) return getPoolInfoLocal()
+    else if (isPolygon()) return getPoolInfoPolygon()
+}
 
-export const getPortfolioValue = async () => {
-
-    if (isLocal()) return getPortfolioValueLocal()
-    else if (isPolygon()) return getPortfolioValuePolygon()
+export const getPortfolioInfo = async () => {
+    if (isLocal()) return getPortfolioInfoLocal()
+    else if (isPolygon()) return getPortfolioInfoPolygon()
 }
 
 
@@ -21,5 +24,6 @@ export const withdraw = async (amount) => {
     if (isLocal()) return withdrawLocal(amount)
     else if (isPolygon()) return withdrawPolygon(amount)
 }
+
   
 

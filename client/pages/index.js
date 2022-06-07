@@ -4,12 +4,14 @@ import { Alert } from 'react-bootstrap'
 
 import { getBalance as getBalancePoolLP } from "../web3/pool_lp"
 import { getBalance as getBalanceUSDC } from "../web3/usdc"
-import { getPortfolioValue } from "../web3/pool"
+import { getPortfolioInfo, getPoolInfo } from "../web3/pool"
 
 import Header from "../components/Header" 
 import { Page, Center } from "../components/Layout"
 import { AlertDismissible } from "../components/AlertDismissible"
 import DepositWithdrawView from "../components/DepositWithdrawView"
+import PoolInfoView from "../components/PoolInfoView"
+import PortfolioInfoView from "../components/PortfolioInfoView"
 
 
 // add bootstrap css 
@@ -36,7 +38,7 @@ export default class IndexPage extends React.Component {
 
 
   reload() {
-    this.loadBalances()
+    this.loadData()
   }
 
 
@@ -52,9 +54,26 @@ export default class IndexPage extends React.Component {
   }
     
 
-  async loadBalances() {
+  async loadData() {
 
-    getBalanceUSDC().then(data => {
+
+    getPoolInfo().then(data => {
+
+      // deposits, withdrawals, depositTokenAmount, investTokenAmount, poolValue,  investedTokenValue, investTokenSymbol, depositTokenSymbol
+      
+      this.setState({
+        deposits: data.deposits,
+        withdrawals: data.withdrawals,
+        depositTokenBalance: data.depositTokenBalance,
+        investTokenBalance: data.investTokenBalance,
+        totalPortfolioValue: data.totalPortfolioValue,
+        investedTokenValue: data.investedTokenValue,
+        investTokenSymbol: data.investTokenSymbol,
+        depositTokenSymbol: data.depositTokenSymbol,
+      })
+
+      return getBalanceUSDC()
+    }).then(data => {
       this.setState({
           balanceUSDC: data.units
       })
@@ -63,10 +82,14 @@ export default class IndexPage extends React.Component {
         this.setState({
             balancePoolLP: data.units
         })
-        return getPortfolioValue()
+        return getPortfolioInfo()
     }).then(data => {
+      ///TODO
         this.setState({
-            portfolioValue: data.units
+          deposited: data.deposited,
+          withdrawn: data.withdrawn,
+          portfolioValue: data.portfolioValue,
+          depositTokenSymbol: data.depositTokenSymbol,
         })
     }).catch(error => {
         this.setState({ error: error.message })
@@ -105,7 +128,11 @@ export default class IndexPage extends React.Component {
 
   render() {
 
-    const { accountConnected, balanceUSDC, portfolioValue, balancePoolLP } =  this.state
+    const { accountConnected, balanceUSDC } =  this.state
+    const { deposits, withdrawals, depositTokenBalance, investTokenBalance, totalPortfolioValue, investedTokenValue } =  this.state
+    const { deposited, withdrawn, portfolioValue } =  this.state
+    const { depositTokenSymbol, investTokenSymbol } =  this.state
+
 
     if (!accountConnected) return (
       <Page>
@@ -131,22 +158,40 @@ export default class IndexPage extends React.Component {
                 { this.state.error && <AlertDismissible variant="danger" title="Error"> {this.state.error} </AlertDismissible> }
                 { this.state.info && <AlertDismissible variant="info" title={this.state.info.title}>{this.state.info.detail}</AlertDismissible> }
 
+
+                    <PortfolioInfoView 
+                      deposited={deposited} 
+                      withdrawn={withdrawn}
+                      portfolioValue={portfolioValue}
+                      depositTokenSymbol={depositTokenSymbol}
+                    />
+                    
                     <div className="w-100 divisor" > </div>
 
                     <DepositWithdrawView
                       balanceUSDC={balanceUSDC}
                       portfolioValue={portfolioValue}
-
                       handleSuccess={this.handleSuccess} 
                       handleError={this.handleError}
                       allowanceUpdated={this.handleAllowanceUpdated}
-          
                     />
 
-            </Center>
+                    <div className="mt-4"></div>
+                    <PoolInfoView
+                        deposits={deposits} 
+                        withdrawals={withdrawals} 
+                        depositTokenBalance={depositTokenBalance}
+                        investTokenBalance={investTokenBalance}
+                        totalPortfolioValue={totalPortfolioValue}
+                        investedTokenValue={investedTokenValue}
+                        depositTokenSymbol={depositTokenSymbol}
+                        investTokenSymbol={investTokenSymbol}
+                        
+                    />
+ 
 
+            </Center>
         </Page>
-     
     )
   }
 }

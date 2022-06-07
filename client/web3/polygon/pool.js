@@ -1,6 +1,7 @@
 import Web3 from "web3"
 import { toTokenDecimals, toNumber, getAccount } from '../utils'
 import { getInstance as getInstanceUSDC } from './usdc'
+import { getInstance as getInstanceWETH } from './weth'
 
 
 /// Pool contract on Polygon/MATIC
@@ -14,20 +15,59 @@ export const getInstance = async () => {
 }
 
 
-export const getPortfolioValue = async () => {
+export const getPoolInfo = async () => {
+
+  const pool = await getInstance()
+  const usdc = await getInstanceUSDC()
+  const weth = await getInstanceWETH()
+
+  const usdcDecimals = await usdc.methods.decimals().call()
+  const usdcSymbol = await usdc.methods.symbol().call()
+  const wethDecimals = await weth.methods.decimals().call()
+  const wethSymbol = await weth.methods.symbol().call()
+
+  const deposits = await pool.methods.totalDeposited().call()
+  const withdrawals = await pool.methods.totalWithdrawn().call()
+
+  const depositTokenBalance = await pool.methods.depositTokenBalance().call()
+  const investTokenBalance = await pool.methods.investTokenBalance().call()
+  const totalPortfolioValue = await pool.methods.totalPortfolioValue().call()
+  const investedTokenValue = await pool.methods.investedTokenValue().call()
+
+  return {
+    deposits: await toNumber(usdcDecimals, deposits, 4),
+    withdrawals: await toNumber(usdcDecimals, withdrawals, 4),
+    depositTokenBalance: await toNumber(usdcDecimals, depositTokenBalance, 4),
+    investTokenBalance:  await toNumber(wethDecimals, investTokenBalance, 4),
+    totalPortfolioValue: await toNumber(usdcDecimals, totalPortfolioValue, 4),
+    investedTokenValue: await toNumber(usdcDecimals, investedTokenValue, 4),
+    
+    depositTokenSymbol: usdcSymbol,
+    investTokenSymbol: wethSymbol,
+  }
+}
+
+
+export const getPortfolioInfo = async () => {
 
     const account = await getAccount()
     const pool = await getInstance()
     const usdc = await getInstanceUSDC()
 
     const decimals = await usdc.methods.decimals().call()
-    const value = await pool.methods.portfolioValue(account).call()
+  
+    const portfolioValue = await pool.methods.portfolioValue(account).call()
+    const deposited = await pool.methods.getDeposits().call({ from: account })
+    const withdrawn = await pool.methods.getWithdrawals().call({ from: account})
 
     return {
-        value: value.toString(),
-        units: await toNumber(decimals, value, 4)
+        deposited: await toNumber(decimals, deposited, 4),
+        withdrawn: await toNumber(decimals, withdrawn, 4),
+        portfolioValue: await toNumber(decimals, portfolioValue, 4),
+        depositTokenSymbol: await usdc.methods.symbol().call(),
     }
 }
+
 
 
 export const deposit = async (amount) => {

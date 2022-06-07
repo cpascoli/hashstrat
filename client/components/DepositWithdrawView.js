@@ -1,10 +1,8 @@
 import React from 'react'
-import { Form, Button, InputGroup, Container, Card, FormControl, Row, Col } from 'react-bootstrap'
-
+import { Button, Container, Row, Col } from 'react-bootstrap'
 import { Center, Wrapped} from "../components/Layout"
 
 import TitleValueBox from './TitleValueBox'
-// import RewardsInfo from './RewardsInfo'
 
 import DepositWithdrawForm from './DepositWithdrawForm'
 import Modal from "./Modal"
@@ -35,23 +33,14 @@ export default class DepositWithdrawView extends React.Component {
 
 
 
-  claimRewardPressed = () => {
-    claimReward().then(result => {
-      this.props.handleSuccess(`Reward claimed. Transaction id: ${result.tx}`)
-    }).catch((error) => {
-      this.props.handleError(error)
-    })
-  }
-
-
-  showDepositWithdrawModalPreseed = (buttonType) => {
+  showModalPreseed = (buttonType) => {
     this.setState({
       showUpdateStakeModal: true,
       formType: buttonType
     })
   }
 
-  hideUpdateStakeModalPreseed = () => {
+  hideModalPreseed = () => {
     this.setState({
       showUpdateStakeModal: false,
       formType: undefined
@@ -63,12 +52,12 @@ export default class DepositWithdrawView extends React.Component {
   }
 
   handleSuccess = (result) => {
-    this.hideUpdateStakeModalPreseed()
+    this.hideModalPreseed()
     this.props.handleSuccess(result)
   }
 
   handleError = (error, message) => {
-    this.hideUpdateStakeModalPreseed()
+    this.hideModalPreseed()
     this.props.handleError(error, message)
   }
 
@@ -77,23 +66,10 @@ export default class DepositWithdrawView extends React.Component {
 
     const { showUpdateStakeModal, formType, balanceUSDC, portfolioValue } = this.state
 
- 
     return (
       <div>
 
-        <Wrapped>
-            <Card style={{flex: 1, minWidth:200, margin: 10 }}>
-              <Card.Title className="p-2">USDC Balance</Card.Title>
-              <Card.Body> { balanceUSDC } USDC </Card.Body>
-            </Card>
-            <Card style={{flex: 1, minWidth:200, margin: 10 }}>
-              <Card.Title className="p-2">Portfolio Value</Card.Title>
-              <Card.Body> { portfolioValue } USDC </Card.Body>
-            </Card>
-        </Wrapped>
-
         <div className="mt-4"></div>
-        
         
         <Center maxWidth="500">
 
@@ -104,10 +80,10 @@ export default class DepositWithdrawView extends React.Component {
           <Container>
             <Row>
               <Col>
-                <Button name="stake" className="w-100" variant="primary" onClick={(e) => this.showDepositWithdrawModalPreseed("deposit")}>Deposit</Button>
+                <Button name="stake" className="w-100" variant="primary" onClick={(e) => this.showModalPreseed("deposit")}>Deposit</Button>
               </Col>
               <Col>
-                <Button name="unstake" className="w-100" variant="secondary" onClick={(e) => this.showDepositWithdrawModalPreseed("withdraw")}>Withdraw</Button>
+                <Button name="unstake" className="w-100" variant="secondary" onClick={(e) => this.showModalPreseed("withdraw")}>Withdraw</Button>
               </Col>
             </Row>
           </Container>
@@ -119,13 +95,13 @@ export default class DepositWithdrawView extends React.Component {
           <div className="mt-4"></div>
 
           {showUpdateStakeModal && (
-            <Modal onClose={(e) => this.hideUpdateStakeModalPreseed()}>
+            <Modal onClose={(e) => this.hideModalPreseed()}>
               <DepositWithdrawForm 
                 formType={formType}
                 handleSuccess={(result) => this.handleSuccess(result)}
                 handleError={(error, message) => this.handleError(error, message)}
                 allowanceUpdated={() => this.handleAllowanceUpdated()}
-                balance={formType == "deposit" ? this.state.balanceUSDC : formType == "withdraw" ? this.state.portfolioValue : 0}
+                balance={formType == "deposit" ? balanceUSDC : formType == "withdraw" ? portfolioValue : 0}
               />
             </Modal>
           )}
