@@ -21,9 +21,11 @@ module.exports = async (deployer, network, [defaultAccount]) => {
   } else if (network.startsWith('matic')) {
     const decimals = 6;   // USDC has 6 decimals
     await deployer.deploy(PoolLPToken, name, symbol, decimals)
+
   } else if (network.startsWith('kovan')) {
     const decimals = 18;   // DAI uses 18 decimals
     await deployer.deploy(PoolLPToken, name, symbol, decimals)
+    
   } else {
     console.log("only for Kovan & Polygon (MATIC) right now!")
   }

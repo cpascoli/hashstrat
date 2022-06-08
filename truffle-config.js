@@ -2,7 +2,10 @@ const HDWalletProvider = require('@truffle/hdwallet-provider')
 require('dotenv').config()
 
 const mnemonic = process.env.MNEMONIC
-const url = process.env.RPC_URL
+const url_polygon_main = process.env.RPC_URL_POLYGON_MAIN
+const url_polygon_test = process.env.RPC_URL_POLYGON_TEST
+const url_kovan = process.env.RPC_URL_KOVAN
+
 const etherscan_api_key = process.env.ETHERSCAN_API_KEY
 const polygonscan_api_key = process.env.POLYGONSCAN_API_KEY
 const bscscan_api_key = process.env.BSSCAN_API_KEY
@@ -35,14 +38,14 @@ module.exports = {
       skipDryRun: true
     },
     matic_testnet: {
-      provider: () => new HDWalletProvider(mnemonic, `https://rpc-mumbai.maticvigil.com`),
+      provider: () => new HDWalletProvider(mnemonic, url_polygon_test),
       network_id: 80001,
       confirmations: 2,
       timeoutBlocks: 200,
       skipDryRun: true
     },
     kovan: {
-      provider: () => new HDWalletProvider(mnemonic, url),
+      provider: () => new HDWalletProvider(mnemonic, url_kovan),
       network_id: '42',
       gas: 8000000,
       networkCheckTimeout: 300000,
@@ -50,7 +53,7 @@ module.exports = {
       skipDryRun: true
     },
     matic: {
-      provider: () => new HDWalletProvider(mnemonic, url),
+      provider: () => new HDWalletProvider(mnemonic, url_polygon_main),
       network_id: 137,
       confirmations: 0,
       timeoutBlocks: 50,

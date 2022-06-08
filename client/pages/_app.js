@@ -1,6 +1,6 @@
 // _app.js
 import '../css/customcss.css'
-
+import 'bootstrap/dist/css/bootstrap.css'
 
 
 const MyApp = ({ Component, pageProps }) => {

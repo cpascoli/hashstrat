@@ -48,7 +48,7 @@ export default class IndexPage extends React.Component {
   }
 
   setAccountConnected = (info) => {
-    console.log(">>> info", info)
+    console.log(">>> setAccountConnected:", info)
     this.setState({
       accountConnected: info.account !== undefined,
       networkId: info.networkId,
@@ -167,9 +167,7 @@ export default class IndexPage extends React.Component {
     const { deposited, withdrawn, portfolioValue } =  this.state
     const { depositTokenSymbol, investTokenSymbol } =  this.state
 
-    // if (!networkId) return (
-    //   <div> loading ... </div>
-    // )
+
 
 
     if (networkId && !isSupportedNetwork(networkId)) return (
@@ -191,12 +189,21 @@ export default class IndexPage extends React.Component {
           <div className="d-inline-block" />
           <Center> 
               <Alert variant="info" title="No Ethereum account connected" style={{textAlign: "center"}}> 
-                Please connect an account on Kovan or Polygon to use the dapp!
+                Please connect an account to use the dapp!
               </Alert>
           </Center>
       </Page>
     )
 
+    if (!accountConnected) return (
+      <Page>
+          <Header ref={this.headerRef} reload={() => this.reload()} setAccountConnected={info => this.setAccountConnected(info)}/>
+          <div className="d-inline-block" />
+          <Center> 
+              Loading...
+          </Center>
+      </Page>
+    )
 
     
     return (

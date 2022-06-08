@@ -35,8 +35,8 @@ export const shortenAccount = (account) => {
 export const getAccount = async () => {
     const accounts = await eth.getAccounts()
     if (accounts.length == 0) {
-        console.error("No account found", accounts)
-        throw Error("No Ethereum account connected. Please connect a wallet and try again!")
+        console.log("getAccount() - No account found", accounts)
+        throw Error("No account found! Please connect a wallet and try again!")
     }
     return accounts[0]
 }
@@ -60,12 +60,16 @@ export const convertHMS = (value) => {
     return hours+'h '+minutes+'m '+seconds+'s';
 }
 
-export const isLocal = () => {
-    return process.env.NEXT_PUBLIC_NETWORK == 'LOCAL'
+export const isKovan = () => {
+    return process.env.NEXT_PUBLIC_NETWORK == 'KOVAN'
 }
 
 export const isPolygon = () => {
     return process.env.NEXT_PUBLIC_NETWORK == 'POLYGON'
+}
+
+export const isLocal = () => {
+    return process.env.NEXT_PUBLIC_NETWORK == 'LOCAL'
 }
 
 
@@ -76,7 +80,6 @@ export const networkInfo = () => {
     return new Promise((resolve, reject) => {
 
         myWeb3.eth.net.getId().then( id => {
-            console.log("networkInfo NETWORK ID", id, "name:", networkName(id) )
             info.networkId = id
             info.networkName = networkName(id) 
             return myWeb3.eth.getBlockNumber()
@@ -85,12 +88,8 @@ export const networkInfo = () => {
             return myWeb3.eth.getBlock(blockNumber)
 
         }).then( block => {
-            console.log("networkInfo NETWORK block", block )
-
             info.blockNumber = block.number
             info.blockTimestamp = block.timestamp
-
-            console.log("networkInfo NETWORK info", info )
             resolve(info)
         }).catch((err) => {
             console.log("blockInfo error:", err);
@@ -102,7 +101,7 @@ export const networkInfo = () => {
 
 
 export const networkName = (networkId) => {
-    console.log("networkName >>> ", networkId, "name", name)
+    //console.log("networkName >>> ", networkId, "name", name)
 
     let name;
     switch (networkId) {
@@ -120,6 +119,6 @@ export const networkName = (networkId) => {
 
 
 export const isSupportedNetwork = (networkId) => {
-    
+
     return networkId == 42 || networkId == 137 || networkId == 1337
 }
