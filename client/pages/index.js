@@ -1,7 +1,7 @@
 
 import React from 'react'
 import { Alert } from 'react-bootstrap'
-
+import { isSupportedNetwork, networkInfo } from '../web3/utils'
 import { getBalance as getBalancePoolLP } from "../web3/pool_lp"
 import { getBalance as getBalanceUSDC } from "../web3/usdc"
 import { getPortfolioInfo, getPoolInfo } from "../web3/pool"
@@ -47,17 +47,27 @@ export default class IndexPage extends React.Component {
     await this.reload()
   }
 
-  setAccountConnected = (connected) => {
+  setAccountConnected = (info) => {
+    console.log(">>> info", info)
     this.setState({
-      accountConnected: connected,
+      accountConnected: info.account !== undefined,
+      networkId: info.networkId,
+      networkName: info.networkName,
     })
   }
     
 
   async loadData() {
 
-
-    getPoolInfo().then(data => {
+    networkInfo().then( info => {
+      this.setState({
+          networkId: info.networkId,
+          networkName: info.networkName,
+          blockNumber: info.blockNumber,
+          blockTimestamp: info.blockTimestamp,
+      })
+      return getPoolInfo()
+    }).then(data => {
 
       this.setState({
         deposits: data.deposits,
@@ -69,7 +79,6 @@ export default class IndexPage extends React.Component {
         investTokenSymbol: data.investTokenSymbol,
         depositTokenSymbol: data.depositTokenSymbol,
       })
-
       return getBalanceUSDC()
     }).then(data => {
       this.setState({
@@ -92,6 +101,21 @@ export default class IndexPage extends React.Component {
         this.setState({ error: error.message })
     })
 
+  }
+
+  loadNetworkInfo = () => {
+
+    networkInfo().then( info => {
+        console.log("loadNetworkInfo", info)
+        this.setState({
+            networkId: info.networkId,
+            networkName: info.networkName,
+            blockNumber: info.blockNumber,
+            blockTimestamp: info.blockTimestamp,
+        })
+    }).catch((error) => {
+        this.setState({ error: error.message })
+    })
   }
 
 
@@ -138,18 +162,36 @@ export default class IndexPage extends React.Component {
 
   render() {
 
-    const { accountConnected, balanceUSDC } =  this.state
+    const { accountConnected, networkId, networkName, balanceUSDC } =  this.state
     const { deposits, withdrawals, depositTokenBalance, investTokenBalance, totalPortfolioValue, investedTokenValue } =  this.state
     const { deposited, withdrawn, portfolioValue } =  this.state
     const { depositTokenSymbol, investTokenSymbol } =  this.state
 
+    // if (!networkId) return (
+    //   <div> loading ... </div>
+    // )
 
-    if (!accountConnected) return (
+
+    if (networkId && !isSupportedNetwork(networkId)) return (
       <Page>
-          <Header ref={this.headerRef} reload={() => this.reload()} setAccountConnected={connected => this.setAccountConnected(connected)}/>
+          <Header ref={this.headerRef} reload={() => this.reload()} setAccountConnected={info => this.setAccountConnected(info)}/>
+          <div className="d-inline-block" />
+          <Center> 
+              <Alert variant="info" title="Network not supported" style={{textAlign: "center"}}> 
+               This app is not supported on {networkName}. Please connect to Kovan or Polygon.
+              </Alert>
+          </Center>
+      </Page>
+    )
+
+
+    if (networkId && !accountConnected) return (
+      <Page>
+          <Header ref={this.headerRef} reload={() => this.reload()} setAccountConnected={info => this.setAccountConnected(info)}/>
+          <div className="d-inline-block" />
           <Center> 
               <Alert variant="info" title="No Ethereum account connected" style={{textAlign: "center"}}> 
-                Please connect an Ethereum account to use the dapp!
+                Please connect an account on Kovan or Polygon to use the dapp!
               </Alert>
           </Center>
       </Page>
@@ -161,7 +203,7 @@ export default class IndexPage extends React.Component {
 
         <Page>
 
-             <Header ref={this.headerRef} reload={() => this.reload()} setAccountConnected={connected => this.setAccountConnected(connected)}/>
+             <Header ref={this.headerRef} reload={() => this.reload()} setAccountConnected={info => this.setAccountConnected(info)}/>
 
              <div className="w-100 divisor" > </div>
              <Center > 

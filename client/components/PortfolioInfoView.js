@@ -9,11 +9,11 @@ const PortfolioInfoView = ({ deposited, withdrawn, portfolioValue, depositTokenS
 
     <Wrapped>
       <Card style={{flex: 1, minWidth:200, margin: 10 }}>
-        <Card.Title className="p-2">Deposited</Card.Title>
+        <Card.Title className="p-2">My Deposits (Cumulative)</Card.Title>
         <Card.Body> { deposited } {depositTokenSymbol} </Card.Body>
       </Card>
       <Card style={{flex: 1, minWidth:200, margin: 10 }}>
-        <Card.Title className="p-2">Withdrawn</Card.Title>
+        <Card.Title className="p-2">MY Withdrawals (Cumulative)</Card.Title>
         <Card.Body> { withdrawn }  {depositTokenSymbol} </Card.Body>
       </Card>
 
@@ -23,7 +23,7 @@ const PortfolioInfoView = ({ deposited, withdrawn, portfolioValue, depositTokenS
       </Card>
 
       <Card style={{flex: 1, minWidth:200, margin: 10 }}>
-        <Card.Title className="p-2"> ROI</Card.Title>
+        <Card.Title className="p-2">My ROI</Card.Title>
         <Card.Body> { roi } % </Card.Body>
       </Card>
 

@@ -2,7 +2,7 @@ import React from 'react'
 import { Container, Row, Col, Button, Dropdown, DropdownButton, ButtonGroup } from 'react-bootstrap'
 
 import { Flow } from "../components/Layout"
-import { shortenAccount, getAccount } from "../web3/utils"
+import { shortenAccount, getAccount, networkInfo } from "../web3/utils"
 import { myWeb3 } from "../web3/provider"
 import { getBalance as getBalancePoolLP, getAllowance as getAllowancePoolLP } from "../web3/pool_lp"
 import { getBalance as getBalanceUSDC, getAllowance as getAllowanceUSDC } from "../web3/usdc"
@@ -35,7 +35,7 @@ export default class Header extends React.Component {
     }
 
     reload = async () => {
-        await this.loadBlockInfo()
+        await this.loadNetworkInfo()
         await this.loadAccount()
         await this.loadBalance()
     }
@@ -58,12 +58,20 @@ export default class Header extends React.Component {
             this.setState({
                 account: shortenAccount(account),
             })
-            this.props.setAccountConnected(true)
+            this.props.setAccountConnected({
+                account: account,
+                networkId: this.state.networkId,
+                networkName: this.state.networkName,
+            })
         } else {
             this.setState({
                 account: undefined,
             })
-            this.props.setAccountConnected(false)
+            this.props.setAccountConnected({
+                account: undefined,
+                networkId: this.state.networkId,
+                networkName: this.state.networkName,
+            })
         }
     }
 
@@ -73,7 +81,11 @@ export default class Header extends React.Component {
             this.handleAccount(account)
         }).catch(error => {
             this.setState({ error: error.message })
-            this.props.setAccountConnected(false)
+            this.props.setAccountConnected({
+                account: undefined,
+                networkId: this.state.networkId,
+                networkName: this.state.networkName,
+            })
         })
     }
 
@@ -93,16 +105,15 @@ export default class Header extends React.Component {
     }
 
 
-    loadBlockInfo = () => {
-        myWeb3.eth.net.getId().then( id => {
-            console.log("NETWORK ID", id)
-        })
-        myWeb3.eth.getBlockNumber().then( number => {
-            return myWeb3.eth.getBlock(number)
-        }).then((block) => {
+    loadNetworkInfo = () => {
+
+        networkInfo().then( info => {
+            console.log("loadNetworkInfo", info)
             this.setState({
-                blockNumber: block.number,
-                blockTimestamp: block.timestamp
+                networkId: info.networkId,
+                networkName: info.networkName,
+                blockNumber: info.blockNumber,
+                blockTimestamp: info.blockTimestamp,
             })
         }).catch((error) => {
             this.setState({ error: error.message })
@@ -110,11 +121,10 @@ export default class Header extends React.Component {
     }
 
 
+
     render() {
 
-        const { balanceUSDC, balancePoolLP } = this.state
-
-        const blockNumber = this.state && this.state.blockNumber
+        const { balanceUSDC, balancePoolLP, blockNumber, networkId, networkName } = this.state
         const blockDate = this.state && this.state.blockTimestamp && new Date(this.state.blockTimestamp * 1000)
         const blockDateFormatted = (blockDate && `${blockDate.toLocaleDateString()} @ ${blockDate.toLocaleTimeString()}`) || "-"
         const account = this.state && this.state.account
@@ -126,10 +136,12 @@ export default class Header extends React.Component {
                         <Col>
                             <Flow>
                                 <div>
-                                { (balanceUSDC !== undefined) && <h5 className="m-2"> {balanceUSDC} USDC</h5> }
+                                    Connected to <span>{networkName}</span>
                                 </div>
-                                <div>
-                                { (balancePoolLP !== undefined) && <h5 className="m-2"> {balancePoolLP} Pool-LP </h5> }
+                  
+                                <div> 
+                                    <span className="m-2" > {balanceUSDC || 0} USDC</span> 
+                                    <span className="m-2"> {balancePoolLP || 0} Pool-LP </span> 
                                 </div>
                             </Flow>
                         </Col>

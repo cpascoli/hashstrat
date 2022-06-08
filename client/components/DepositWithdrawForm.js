@@ -42,7 +42,7 @@ export default class DepositWithdrawForm extends React.Component {
         const amount = Number(this.state.amount)
         approve(amount)
             .then(result => {
-                this.props.handleSuccess(`Allowance increased. Transaction hash: ${result.transactionHash}`)
+                //this.props.handleSuccess(`Allowance increased. Transaction hash: ${result.transactionHash}`)
                 return this.checkAllowance(amount)
             }).then(allowanceOk => {
                 this.setState({ sufficientAllowance: allowanceOk })
@@ -57,6 +57,7 @@ export default class DepositWithdrawForm extends React.Component {
         return new Promise((resolve, reject) => {
             getAllowance()
                 .then((allowance) => {
+                    console.log(">> checkAllowance() - allowance:", allowance)
                     const allowanceOk = amount <= allowance
                     resolve(allowanceOk);
                 })

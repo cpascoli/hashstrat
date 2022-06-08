@@ -67,3 +67,59 @@ export const isLocal = () => {
 export const isPolygon = () => {
     return process.env.NEXT_PUBLIC_NETWORK == 'POLYGON'
 }
+
+
+export const networkInfo = () => {
+
+    const info = { }
+
+    return new Promise((resolve, reject) => {
+
+        myWeb3.eth.net.getId().then( id => {
+            console.log("networkInfo NETWORK ID", id, "name:", networkName(id) )
+            info.networkId = id
+            info.networkName = networkName(id) 
+            return myWeb3.eth.getBlockNumber()
+            
+        }).then( blockNumber => {
+            return myWeb3.eth.getBlock(blockNumber)
+
+        }).then( block => {
+            console.log("networkInfo NETWORK block", block )
+
+            info.blockNumber = block.number
+            info.blockTimestamp = block.timestamp
+
+            console.log("networkInfo NETWORK info", info )
+            resolve(info)
+        }).catch((err) => {
+            console.log("blockInfo error:", err);
+            reject(err)
+        })
+    })
+ 
+}
+
+
+export const networkName = (networkId) => {
+    console.log("networkName >>> ", networkId, "name", name)
+
+    let name;
+    switch (networkId) {
+        case 1: { name = "Ethereum (Mainnet)"; break; }
+        case 4: { name = "Rinkeby (Testnet)"; break; }
+        case 42: { name = "Kovan (Testnet)"; break; }
+        case 137: { name = "Polygon (Mainnet)"; break; }
+        case 1337: { name = "Local"; break; }
+        default: name = "Unknown"
+    }
+    console.log("networkName >>> ", networkId, "name", name)
+
+    return name;
+}
+
+
+export const isSupportedNetwork = (networkId) => {
+    
+    return networkId == 42 || networkId == 137 || networkId == 1337
+}
