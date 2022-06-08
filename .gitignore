@@ -10,3 +10,4 @@ package-lock.json
 client/.next
 client/web3/artifacts
 client/out
+deploy.sh

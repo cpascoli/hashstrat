@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "npm run artifacts && next client",
+    "export": "cd client && next build && next export",
     "artifacts": "cp -r ./build/contracts/ ./client/web3/artifacts",
     "compile": "npx truffle compile",
     "console:dev": "npx truffle console --network cldev",
