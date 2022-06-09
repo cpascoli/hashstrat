@@ -10,6 +10,7 @@ export const getInterface = () => {
       getAllowance: () => getAllowance(),
       approve: (amount) => approve(amount),
       symbol: () => symbol(),
+      address: PoolLPToken.address,
   }
 }
 

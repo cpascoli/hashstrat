@@ -2,10 +2,15 @@ import Web3 from "web3"
 import { toNumber, getAccount } from '../utils'
 
 
+/// WETH contract on Polygon/MATIC
+export const contract_address = '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619';
+
+
 export const getInterface = () => {
   return {
       getBalance: () => getBalance(),
       symbol: () => symbol(),
+      address: contract_address,
   }
 }
 
@@ -37,8 +42,7 @@ export const symbol = async() => {
 
   
 
-/// WETH contract on Polygon/MATIC
-export const contract_address = '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619';
+
 const abi = [
   {
     "anonymous": false,

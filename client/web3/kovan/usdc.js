@@ -12,6 +12,7 @@ export const getInterface = () => {
       getAllowance: () => getAllowance(),
       approve: (amount) => approve(amount),
       symbol: () => symbol(),
+      address: contract_address,
   }
 }
 

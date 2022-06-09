@@ -7,17 +7,20 @@ import { getInterface as poolPolygon } from './polygon/pool'
 import { getInterface as poolLPPolygon } from './polygon/pool_lp'
 import { getInterface as usdcPolygon } from './polygon/usdc'
 import { getInterface as wethPolygon } from './polygon/weth'
+import { getInterface as strategyPolygon } from './polygon/strategy'
 
 import { getInterface as poolKovan } from './kovan/pool'
 import { getInterface as poolLPKovan } from './kovan/pool_lp'
 import { getInterface as usdcKovan } from './kovan/usdc'
 import { getInterface as wethKovan } from './kovan/weth'
-
+import { getInterface as strategyKovan } from './kovan/strategy'
 
 import { getInterface as poolLocal } from './local/pool'
 import { getInterface as poolLPLocal } from './local/pool_lp'
 import { getInterface as usdcLocal } from './local/usdc'
 import { getInterface as wethLocal } from './local/weth'
+import { getInterface as strategyLocal } from './local/strategy'
+
 
 const provider = () => {
   // If the user has MetaMask:
@@ -28,10 +31,11 @@ const provider = () => {
   }
 }
 
+
 export const eth = new Web3(provider()).eth
 export const myWeb3 = new Web3(provider())
 
-export const getInstance = artifact => {
+export const getInstance = () => {
 
   if (isPolygon()) {
     return {
@@ -39,6 +43,10 @@ export const getInstance = artifact => {
       getPoolLP: () => poolLPPolygon(),
       getUsdc: () => usdcPolygon(),
       getWeth: () => wethPolygon(),
+      getStrategy: () => strategyPolygon(),
+      getInfo: () => {
+        return { networkExplorerHost: "polygonscan.com" }
+      }
     }
   }
   
@@ -48,6 +56,10 @@ export const getInstance = artifact => {
       getPoolLP: () => poolLPKovan(),
       getUsdc: () => usdcKovan(),
       getWeth: () => wethKovan(),
+      getStrategy: () => strategyKovan(),
+      getInfo: () => {
+        return { networkExplorerHost: "kovan.etherscan.io" }
+      }
     }
   }
 
@@ -57,6 +69,10 @@ export const getInstance = artifact => {
       getPoolLP: () => poolLPLocal(),
       getUsdc: () => usdcLocal(),
       getWeth: () => wethLocal(),
+      getStrategy: () => strategyLocal(),
+      getInfo: () => {
+        return { networkExplorerHost: "localhost" }
+      }
     }
   }
 

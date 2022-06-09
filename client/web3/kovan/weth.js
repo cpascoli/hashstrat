@@ -10,6 +10,7 @@ export const getInterface = () => {
   return {
       getBalance: () => getBalance(),
       symbol: () => symbol(),
+      address: contract_address,
   }
 }
 

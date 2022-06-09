@@ -14,6 +14,7 @@ export const getInterface = () => {
     getPortfolioInfo: () => getPortfolioInfo(),
     deposit: (amount) => deposit(amount),
     withdraw: (amount) => withdraw(amount),
+    address: contract_address,
   }
 }
 

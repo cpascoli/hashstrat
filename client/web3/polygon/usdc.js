@@ -2,6 +2,8 @@ import Web3 from "web3"
 import { toNumber, getAccount, toTokenDecimals } from '../utils'
 import { contract_address as pool_conctract_address } from './pool'
 
+/// USDC contract on Polygon/MATIC
+export const contract_address = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
 
 
 export const getInterface = () => {
@@ -10,6 +12,7 @@ export const getInterface = () => {
       getAllowance: () => getAllowance(),
       approve: (amount) => approve(amount),
       symbol: () => symbol(),
+      address: contract_address,
   }
 }
 
@@ -76,8 +79,7 @@ export const symbol = async() => {
 
   
 
-/// USDC contract on Polygon/MATIC
-export const contract_address = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+
 const abi = [
   {
     "anonymous": false,

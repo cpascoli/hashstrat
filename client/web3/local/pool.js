@@ -11,6 +11,7 @@ export const getInterface = () => {
       getPortfolioInfo: () => getPortfolioInfo(),
       deposit: (amount) => deposit(amount),
       withdraw: (amount) => withdraw(amount),
+      address: Pool.address,
     }
 }
 
@@ -20,7 +21,7 @@ export const getInstance = artifact => {
     contractObj.setProvider(provider())
   
     return contractObj.deployed();
-  }
+}
   
 
 export const getPoolInfo = async () => {

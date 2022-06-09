@@ -14,6 +14,7 @@ export const getInterface = () => {
     getPortfolioInfo: () => getPortfolioInfo(),
     deposit: (amount) => deposit(amount),
     withdraw: (amount) => withdraw(amount),
+    address: contract_address,
   }
 }
 
@@ -48,7 +49,7 @@ export const getPoolInfo = async () => {
     deposits: await toNumber(usdcDecimals, deposits, 4),
     withdrawals: await toNumber(usdcDecimals, withdrawals, 4),
     depositTokenBalance: await toNumber(usdcDecimals, depositTokenBalance, 4),
-    investTokenBalance:  await toNumber(wethDecimals, investTokenBalance, 4),
+    investTokenBalance:  await toNumber(wethDecimals, investTokenBalance, 6),
     totalPortfolioValue: await toNumber(usdcDecimals, totalPortfolioValue, 4),
     investedTokenValue: await toNumber(usdcDecimals, investedTokenValue, 4),
     
