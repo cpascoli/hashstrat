@@ -1,10 +1,27 @@
-import { getInstance } from '../provider'
 import { toTokenDecimals, toNumber, getAccount } from '../utils'
 
 import Pool from "../artifacts/Pool.json"
 import USDCP from "../artifacts/USDCP.json"
 import WETH from "../artifacts/WETH.json"
 
+
+export const getInterface = () => {
+    return {
+      getPoolInfo: () => getPoolInfo(),
+      getPortfolioInfo: () => getPortfolioInfo(),
+      deposit: (amount) => deposit(amount),
+      withdraw: (amount) => withdraw(amount),
+    }
+}
+
+
+export const getInstance = artifact => {
+    const contractObj = contract(artifact)
+    contractObj.setProvider(provider())
+  
+    return contractObj.deployed();
+  }
+  
 
 export const getPoolInfo = async () => {
 

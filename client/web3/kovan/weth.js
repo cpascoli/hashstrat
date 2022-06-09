@@ -1,9 +1,17 @@
 import Web3 from "web3"
-import { toNumber, getAccount, toTokenDecimals } from '../utils'
+import { toNumber, getAccount } from '../utils'
 
 
 /// WETH contract on Kovan
 export const contract_address = '0xd0A1E359811322d97991E03f863a0C30C2cF029C';
+
+
+export const getInterface = () => {
+  return {
+      getBalance: () => getBalance(),
+      symbol: () => symbol(),
+  }
+}
 
 
 export const getInstance = async () => {

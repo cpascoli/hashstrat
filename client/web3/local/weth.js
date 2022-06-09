@@ -1,6 +1,6 @@
 import { toTokenDecimals, toNumber, getAccount } from '../utils'
 
-import PoolLPToken from "../artifacts/PoolLPToken.json"
+import WETH from "../artifacts/WETH.json"
 import Pool from "../artifacts/Pool.json"
 
 
@@ -23,43 +23,47 @@ export const getInstance = artifact => {
 
 
 export const getBalance = async () => {
-  const poolLP = await getInstance(PoolLPToken)
+
+  console.log('>>>>> local balance: ', balance);
+
+  const weth = await getInstance(WETH)
+  const decimals = await weth.decimals.call()
   const account = await getAccount()
-  const balance = await poolLP.balanceOf.call(account)
-  const decimals = await poolLP.decimals.call()
+  const balance = await weth.balanceOf.call(account)
+
   return {
       balance: balance.toString(),
-      units: await toNumber(decimals, balance, 4)
+      units: await toNumber(decimals, balance, 2)
   }
 }
 
 
 export const getAllowance = async () => {
   const pool = await getInstance(Pool)
-  const poolLP = await getInstance(PoolLPToken)
-  const decimals = await poolLP.decimals.call()
-
+  const weth = await getInstance(WETH)
+  const decimals = await weth.decimals.call()
   const account = await getAccount()
-  const allowance = await poolLP.allowance(account, pool.address);
-  const allowanceDec = await toNumber(decimals, allowance, 4)
+  const allowance = await weth.allowance(account, pool.address);
+  const allowanceDec = await toNumber(decimals, allowance, 2)
 
   return Number(allowanceDec.toString())
 }
 
+
 export const approve = async (amount) => {
-  const poolLP = await getInstance(PoolLPToken)
+  const weth = await getInstance(WETH)
   const pool = await getInstance(Pool)
   const account = await getAccount()
-  const decimals = await poolLP.decimals.call()
-
+  const decimals = await weth.decimals.call()
   const tokenDecimals = await toTokenDecimals(decimals, amount)
-  const response = await poolLP.approve(pool.address, tokenDecimals, {from: account});
+
+  const response = await weth.approve(pool.address, tokenDecimals, {from: account});
   return response
 }
 
 
 export const symbol = async() => {
-  const poolLP = await getInstance(PoolLPToken)
-  const response = await poolLP.symbol()
+  const weth = await getInstance(WETH)
+  const response = await weth.symbol()
   return response
 }

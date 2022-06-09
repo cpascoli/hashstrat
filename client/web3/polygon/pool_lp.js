@@ -3,6 +3,20 @@ import { toNumber, getAccount, toTokenDecimals } from '../utils'
 import { contract_address as pool_conctract_address } from './pool'
 
 
+/// PoolLP contract on Polygon/MATIC
+export const contract_address = '0xC899BE41c7f0ADb202b1D7Ed7CB10365D8b8b0e2';
+
+
+export const getInterface = () => {
+    return {
+        getBalance: () => getBalance(),
+        getAllowance: () => getAllowance(),
+        approve: (amount) => approve(amount),
+        symbol: () => symbol(),
+    }
+}
+
+
 export const getInstance = async () => {
     const web3 = new Web3(window.ethereum);
     // var web3 = new Web3(web3.currentProvider);
@@ -65,8 +79,7 @@ export const symbol = async() => {
 }
 
   
-/// PoolLP contract on Polygon/MATIC
-export const contract_address = '0xC899BE41c7f0ADb202b1D7Ed7CB10365D8b8b0e2';
+
 const abi = [
   {
       "constant": true,

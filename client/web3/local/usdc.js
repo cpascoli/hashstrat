@@ -1,8 +1,25 @@
-import { myWeb3, eth, getInstance } from '../provider'
 import { toTokenDecimals, toNumber, getAccount } from '../utils'
 
 import USDCP from "../artifacts/USDCP.json"
 import Pool from "../artifacts/Pool.json"
+
+
+export const getInterface = () => {
+  return {
+      getBalance: () => getBalance(),
+      getAllowance: () => getAllowance(),
+      approve: (amount) => approve(amount),
+      symbol: () => symbol(),
+  }
+}
+
+
+export const getInstance = artifact => {
+  const contractObj = contract(artifact)
+  contractObj.setProvider(provider())
+
+  return contractObj.deployed();
+}
 
 
 export const getBalance = async () => {
@@ -31,6 +48,7 @@ export const getAllowance = async () => {
 
   return Number(allowanceDec.toString())
 }
+
 
 export const approve = async (amount) => {
   const usdcp = await getInstance(USDCP)

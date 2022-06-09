@@ -4,7 +4,17 @@ import { contract_address as pool_conctract_address } from './pool'
 
 
 /// PoolLP contract on Kovan
-export const contract_address = '0x90A442871Ee9faeD320893e5DD0B1E56052Fab66';
+export const contract_address = '0xD9E6A74D970B67C0c25b03D96cf4f9f4040C4D0a';
+
+
+export const getInterface = () => {
+    return {
+        getBalance: () => getBalance(),
+        getAllowance: () => getAllowance(),
+        approve: (amount) => approve(amount),
+        symbol: () => symbol(),
+    }
+}
 
 
 export const getInstance = async () => {

@@ -1,5 +1,13 @@
 import Web3 from "web3"
-import { toNumber, getAccount, toTokenDecimals } from '../utils'
+import { toNumber, getAccount } from '../utils'
+
+
+export const getInterface = () => {
+  return {
+      getBalance: () => getBalance(),
+      symbol: () => symbol(),
+  }
+}
 
 
 export const getInstance = async () => {

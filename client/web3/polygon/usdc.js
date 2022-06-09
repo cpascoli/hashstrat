@@ -3,6 +3,17 @@ import { toNumber, getAccount, toTokenDecimals } from '../utils'
 import { contract_address as pool_conctract_address } from './pool'
 
 
+
+export const getInterface = () => {
+  return {
+      getBalance: () => getBalance(),
+      getAllowance: () => getAllowance(),
+      approve: (amount) => approve(amount),
+      symbol: () => symbol(),
+  }
+}
+
+
 export const getInstance = async () => {
     const web3 = new Web3(window.ethereum);
     return new web3.eth.Contract(abi, contract_address)

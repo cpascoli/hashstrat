@@ -6,6 +6,16 @@ import { contract_address as pool_conctract_address } from './pool'
 export const contract_address = '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa';
 
 
+export const getInterface = () => {
+  return {
+      getBalance: () => getBalance(),
+      getAllowance: () => getAllowance(),
+      approve: (amount) => approve(amount),
+      symbol: () => symbol(),
+  }
+}
+
+
 export const getInstance = async () => {
     const web3 = new Web3(window.ethereum);
     return new web3.eth.Contract(abi, contract_address)
@@ -48,7 +58,6 @@ export const approve = async (amount) => {
             from: account,
             gasPrice: '50000000000'
         }).once("receipt", (receipt) => {
-            // status, transactionHash, gasUsed, cumulativeGasUsed, effectiveGasPrice, blockNumber, blockHash,
             console.log("approve receipt >> ", receipt);
             resolve(receipt)
         }).catch((err) => {
@@ -66,7 +75,6 @@ export const symbol = async() => {
     return response
 }
 
-  
 
 
 const abi = [

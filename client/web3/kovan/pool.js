@@ -5,7 +5,17 @@ import { getInstance as getInstanceWETH } from './weth'
 
 
 /// Pool contract on Kovan
-export const contract_address = '0xDa5D27f90d8d24c4906e809b65BCc86eCAd07Ba7';
+export const contract_address = '0x13eBDc730cA1f64a76Aef7FC8b400E982ef4B271';
+
+
+export const getInterface = () => {
+  return {
+    getPoolInfo: () => getPoolInfo(),
+    getPortfolioInfo: () => getPortfolioInfo(),
+    deposit: (amount) => deposit(amount),
+    withdraw: (amount) => withdraw(amount),
+  }
+}
 
 
 export const getInstance = async () => {

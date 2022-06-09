@@ -8,6 +8,17 @@ import { getInstance as getInstanceWETH } from './weth'
 export const contract_address = '0x1Df1D2057D1d4126398C001ea855a60b277c249E';
 
 
+export const getInterface = () => {
+  return {
+    getPoolInfo: () => getPoolInfo(),
+    getPortfolioInfo: () => getPortfolioInfo(),
+    deposit: (amount) => deposit(amount),
+    withdraw: (amount) => withdraw(amount),
+  }
+}
+
+
+
 export const getInstance = async () => {
   const web3 = new Web3(window.ethereum);
   // var web3 = new Web3(web3.currentProvider);
