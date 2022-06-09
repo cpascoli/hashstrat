@@ -3,9 +3,8 @@ import { Container, Row, Col, Button, Dropdown, DropdownButton, ButtonGroup } fr
 
 import { Flow } from "../components/Layout"
 import { shortenAccount, getAccount, networkInfo } from "../web3/utils"
-import { myWeb3 } from "../web3/provider"
 import { getBalance as getBalancePoolLP, getAllowance as getAllowancePoolLP } from "../web3/pool_lp"
-import { getBalance as getBalanceUSDC, getAllowance as getAllowanceUSDC } from "../web3/usdc"
+import { getBalance as getBalanceUSDC, symbol as depositTokenSymbol } from "../web3/usdc"
 
 
 export default class Header extends React.Component {
@@ -38,6 +37,7 @@ export default class Header extends React.Component {
         await this.loadNetworkInfo()
         await this.loadAccount()
         await this.loadBalance()
+        await this.loadSymbol()
     }
 
 
@@ -120,11 +120,18 @@ export default class Header extends React.Component {
         })
     }
 
+    loadSymbol = () => {
+        depositTokenSymbol().then( symbol => {
+            this.setState({
+                depositTokenSymbol: symbol,
+            })
+        })
+    }
 
 
     render() {
 
-        const { balanceUSDC, balancePoolLP, blockNumber, networkId, networkName } = this.state
+        const { balanceUSDC, balancePoolLP, blockNumber, networkId, networkName, depositTokenSymbol } = this.state
         const blockDate = this.state && this.state.blockTimestamp && new Date(this.state.blockTimestamp * 1000)
         const blockDateFormatted = (blockDate && `${blockDate.toLocaleDateString()} @ ${blockDate.toLocaleTimeString()}`) || "-"
         const account = this.state && this.state.account
@@ -140,7 +147,7 @@ export default class Header extends React.Component {
                                 </div>
                   
                                 <div> 
-                                    <span className="m-2" > {balanceUSDC || 0} USDC</span> 
+                                    <span className="m-2" > {balanceUSDC || 0} {depositTokenSymbol} </span> 
                                     <span className="m-2"> {balancePoolLP || 0} Pool-LP </span> 
                                 </div>
                             </Flow>

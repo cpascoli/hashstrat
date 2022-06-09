@@ -42,6 +42,8 @@ export default class DepositWithdrawForm extends React.Component {
         const amount = Number(this.state.amount)
         approve(amount)
             .then(result => {
+                console.log("allow token receipt:", result)
+
                 //this.props.handleSuccess(`Allowance increased. Transaction hash: ${result.transactionHash}`)
                 return this.checkAllowance(amount)
             }).then(allowanceOk => {
@@ -49,7 +51,7 @@ export default class DepositWithdrawForm extends React.Component {
             }).catch(error => {
                 const message = this.getError(error)
                 console.error('Error approving tokens', message);
-                this.props.handleError(error, message)
+                //this.props.handleError(error, message)
             })
     }
 
@@ -90,7 +92,7 @@ export default class DepositWithdrawForm extends React.Component {
         const value = Number(amount)
         
         deposit(value).then(result => {
-            this.props.handleSuccess(`Deposit started. Transaction hash: ${result.transactionHash}`)
+            this.props.handleSuccess(`Deposit completed. Transaction hash: ${result.transactionHash}`)
         }).catch((error) => {
             const message = this.getError(error)
             this.props.handleError(error, message)
@@ -106,7 +108,7 @@ export default class DepositWithdrawForm extends React.Component {
         const value = Number(amount)
         
         withdraw(value).then(result => {
-            this.props.handleSuccess(`Withdrawal started. Transaction hash: ${result.transactionHash}`)
+            this.props.handleSuccess(`Withdrawal completed. Transaction hash: ${result.transactionHash}`)
         }).catch((error) => {
             const message = this.getError(error)
             this.props.handleError(error, message)
@@ -126,7 +128,7 @@ export default class DepositWithdrawForm extends React.Component {
     }
 
     render() {
-        const { formType, balance } = this.state
+        const { formType, balance, depositTokenSymbol } = this.state
 
         const title = (formType === 'deposit') ? "Deposit" : (formType === 'withdraw') ? "Withdraw" : undefined
         if (!title) return (<div>Error</div>)
@@ -144,7 +146,7 @@ export default class DepositWithdrawForm extends React.Component {
                                 type="text" placeholder="0.0" autoComplete="off" value={this.state.amount}
                                 title="balance not staked" onChange={e => this.updateAmount(e)}
                             />
-                            <InputGroup.Text> USDC </InputGroup.Text>
+                            <InputGroup.Text> {depositTokenSymbol} </InputGroup.Text>
                         </InputGroup>
 
                     </Form.Group>
@@ -162,7 +164,7 @@ export default class DepositWithdrawForm extends React.Component {
                         {this.state.validAmount && !this.state.sufficientAllowance && this.state.formType === 'deposit' &&
                             <Button name="allow" type="button" variant="primary w-50"
                                 onClick={e => this.allowButtonPressed()} className="pl-2">
-                                Allow USDC token transfer
+                                Allow token transfer
                             </Button>
                         }
                         &nbsp;&nbsp;&nbsp;

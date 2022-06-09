@@ -64,7 +64,7 @@ export default class DepositWithdrawView extends React.Component {
 
   render() {
 
-    const { showUpdateStakeModal, formType, balanceUSDC, portfolioValue } = this.state
+    const { showUpdateStakeModal, formType, balanceUSDC, portfolioValue, depositTokenSymbol } = this.state
 
     return (
       <div>
@@ -73,7 +73,7 @@ export default class DepositWithdrawView extends React.Component {
         
         <Center maxWidth="500">
 
-          <TitleValueBox title="Available to deposit" value={balanceUSDC} symbol="USDCP" />
+          <TitleValueBox title="Available to deposit" value={balanceUSDC} symbol={depositTokenSymbol} />
 
           <div className="mt-4"></div>
 
@@ -96,12 +96,13 @@ export default class DepositWithdrawView extends React.Component {
 
           {showUpdateStakeModal && (
             <Modal onClose={(e) => this.hideModalPreseed()}>
-              <DepositWithdrawForm 
+              <DepositWithdrawForm
                 formType={formType}
                 handleSuccess={(result) => this.handleSuccess(result)}
                 handleError={(error, message) => this.handleError(error, message)}
                 allowanceUpdated={() => this.handleAllowanceUpdated()}
                 balance={formType == "deposit" ? balanceUSDC : formType == "withdraw" ? portfolioValue : 0}
+                depositTokenSymbol={depositTokenSymbol}
               />
             </Modal>
           )}

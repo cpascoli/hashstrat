@@ -176,7 +176,7 @@ export default class IndexPage extends React.Component {
           <div className="d-inline-block" />
           <Center> 
               <Alert variant="info" title="Network not supported" style={{textAlign: "center"}}> 
-               This app is not supported on {networkName}. Please connect to Kovan or Polygon.
+               This app is not supported on {networkName}. Please connect to {process.env.NEXT_PUBLIC_NETWORK}
               </Alert>
           </Center>
       </Page>
@@ -240,6 +240,7 @@ export default class IndexPage extends React.Component {
                     <div className="w-100 divisor" > </div>
 
                     <DepositWithdrawView
+                      depositTokenSymbol={depositTokenSymbol}
                       balanceUSDC={balanceUSDC}
                       portfolioValue={portfolioValue}
                       handleSuccess={this.handleSuccess} 

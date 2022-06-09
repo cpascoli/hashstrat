@@ -119,6 +119,7 @@ export const networkName = (networkId) => {
 
 
 export const isSupportedNetwork = (networkId) => {
-
-    return networkId == 42 || networkId == 137 || networkId == 1337
+    return  (isKovan() && networkId == 42) || 
+            (isPolygon() && networkId == 137) || 
+            (isLocal() && networkId == 1337)
 }
