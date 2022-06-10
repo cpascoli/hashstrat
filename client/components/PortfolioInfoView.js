@@ -4,7 +4,8 @@ import {  Wrapped } from "../components/Layout"
 
 const PortfolioInfoView = ({ deposited, withdrawn, portfolioValue, depositTokenSymbol }) => { 
   const roi =  Math.round( 10000 * (withdrawn + portfolioValue - deposited) / deposited ) / 100;
-  
+  const roiFormatted = roi ? `${roi} %` : "n/a"
+
   return (
 
     <Wrapped>
@@ -24,7 +25,7 @@ const PortfolioInfoView = ({ deposited, withdrawn, portfolioValue, depositTokenS
 
       <Card style={{flex: 1, minWidth:200, margin: 10 }}>
         <Card.Title className="p-2">My ROI</Card.Title>
-        <Card.Body> { roi } % </Card.Body>
+        <Card.Body> { roiFormatted } </Card.Body>
       </Card>
 
   </Wrapped>

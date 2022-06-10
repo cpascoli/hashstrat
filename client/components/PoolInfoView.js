@@ -3,7 +3,11 @@ import { Form, Container, Row, Col, Card } from 'react-bootstrap'
 const PoolInfoView = ({ deposits, withdrawals, depositTokenBalance, investTokenBalance, totalPortfolioValue, investedTokenValue, depositTokenSymbol, investTokenSymbol }) => {
   
   const roi =  Math.round( 10000 * (withdrawals + totalPortfolioValue - deposits) / deposits ) / 100;
+  const roiFormatted = roi ? `${roi} %` : "n/a"
 
+  const investTokenWeight =  Math.round(10000 * investedTokenValue / totalPortfolioValue) / 100
+  const depositTokenWeight = Math.round(10000 * depositTokenBalance / totalPortfolioValue) / 100 
+  const poolWeightsFormatted = investTokenWeight &&  depositTokenWeight ? `${investTokenWeight} % / ${depositTokenWeight} %` : "n/a"
 
   return (
   
@@ -27,7 +31,7 @@ const PoolInfoView = ({ deposits, withdrawals, depositTokenBalance, investTokenB
             <Form.Label column  style={{minWidth:250}} className="text-start">ROI</Form.Label>
             <Col />
             <Form.Label column  style={{minWidth:200}} className="text-end">
-              { roi } %
+              { roiFormatted }
             </Form.Label>
           </Form.Group>
 
@@ -42,10 +46,7 @@ const PoolInfoView = ({ deposits, withdrawals, depositTokenBalance, investTokenB
           <Form.Group as={Row} controlId="allocationPercentace">
             <Form.Label column  style={{minWidth:250}} className="text-start">Pool Weights ({investTokenSymbol} / {depositTokenSymbol})</Form.Label>
             <Col />
-            <Form.Label column  style={{minWidth:200}} className="text-end">
-                { Math.round(10000 * investedTokenValue / totalPortfolioValue) / 100 }%  {' '} / {' '}
-                { Math.round(10000 * depositTokenBalance / totalPortfolioValue) / 100 }%
-            </Form.Label>
+            <Form.Label column  style={{minWidth:200}} className="text-end"> {poolWeightsFormatted} </Form.Label>
           </Form.Group>
 
           <Form.Group as={Row} controlId="deposits">
