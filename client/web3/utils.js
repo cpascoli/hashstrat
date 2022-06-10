@@ -123,3 +123,7 @@ export const isSupportedNetwork = (networkId) => {
             (isPolygon() && networkId == 137) || 
             (isLocal() && networkId == 1337)
 }
+
+export const round = (n, d=2) => {
+    return Math.round(n * (10**d)) / (10**d)
+}

@@ -45,6 +45,9 @@ export const getPoolInfo = async () => {
   const totalPortfolioValue = await pool.methods.totalPortfolioValue().call()
   const investedTokenValue = await pool.methods.investedTokenValue().call()
 
+  const latestFeedPrice = await pool.methods.latestFeedPrice().call()
+  const latestFeedTimestamp = await pool.methods.latestFeedTimestamp().call()
+
   return {
     deposits: await toNumber(usdcDecimals, deposits, 4),
     withdrawals: await toNumber(usdcDecimals, withdrawals, 4),
@@ -53,6 +56,9 @@ export const getPoolInfo = async () => {
     totalPortfolioValue: await toNumber(usdcDecimals, totalPortfolioValue, 4),
     investedTokenValue: await toNumber(usdcDecimals, investedTokenValue, 4),
     
+    latestFeedPrice: await toNumber(8, latestFeedPrice, 4), //FIXME use pricefeed decimals
+    latestFeedTimestamp: latestFeedTimestamp,
+
     depositTokenSymbol: usdcSymbol,
     investTokenSymbol: wethSymbol,
   }

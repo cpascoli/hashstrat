@@ -1,5 +1,7 @@
 
 import React from 'react'
+import { Alert } from 'react-bootstrap'
+
 import { isSupportedNetwork, networkInfo } from '../web3/utils'
 import { getBalance as getBalancePoolLP } from "../web3/pool_lp"
 import { getBalance as getBalanceUSDC } from "../web3/usdc"
@@ -61,57 +63,27 @@ export default class IndexPage extends React.Component {
   async loadData() {
 
     networkInfo().then( info => {
-      this.setState({
-          networkId: info.networkId,
-          networkName: info.networkName,
-          blockNumber: info.blockNumber,
-          blockTimestamp: info.blockTimestamp,
-      })
+      this.setState({ ...info })
       return getPoolInfo()
     }).then(data => {
-
-      this.setState({
-        deposits: data.deposits,
-        withdrawals: data.withdrawals,
-        depositTokenBalance: data.depositTokenBalance,
-        investTokenBalance: data.investTokenBalance,
-        totalPortfolioValue: data.totalPortfolioValue,
-        investedTokenValue: data.investedTokenValue,
-        investTokenSymbol: data.investTokenSymbol,
-        depositTokenSymbol: data.depositTokenSymbol,
-      })
+      this.setState({ ...data  })
       return getBalanceUSDC()
     }).then(data => {
-      this.setState({
-          balanceUSDC: data.units
-      })
+      this.setState({ balanceUSDC: data.units })
       return getBalancePoolLP()
     }).then(data => {
-        this.setState({
-            balancePoolLP: data.units
-        })
+        this.setState({ balancePoolLP: data.units })
         return getPortfolioInfo()
     }).then(data => {
-        this.setState({
-          deposited: data.deposited,
-          withdrawn: data.withdrawn,
-          portfolioValue: data.portfolioValue,
-          depositTokenSymbol: data.depositTokenSymbol,
-        })
+        this.setState({ ...data })
         return loadStrategyInfo()
     }).then(info => {
-      console.log("loadStrategyInfo >>> ", info)
-      this.setState({
-        ...info
-      })
+      this.setState({ ...info })
     }).catch(error => {
         this.setState({ error: error.message })
     })
 
   }
-
-
-
 
 
   handleAllowanceUpdated = () => {
@@ -159,8 +131,8 @@ export default class IndexPage extends React.Component {
 
     const { accountConnected, networkId, networkName, balanceUSDC } =  this.state
     const { deposits, withdrawals, depositTokenBalance, investTokenBalance, totalPortfolioValue, investedTokenValue } =  this.state
-    const { deposited, withdrawn, portfolioValue } =  this.state
-    const { depositTokenSymbol, investTokenSymbol } =  this.state
+    const { deposited, withdrawn, portfolioValue, latestFeedPrice, latestFeedTimestamp} = this.state
+    const { depositTokenSymbol, investTokenSymbol } = this.state
     const { strategyName, strategyDescription, strategyTargetInvestPercent, strategyRebalancingThreshold, strategyPricefeedAddress } =  this.state
 
 
@@ -171,7 +143,7 @@ export default class IndexPage extends React.Component {
           <div className="d-inline-block" />
           <Center> 
               <Alert variant="info" title="Network not supported" style={{textAlign: "center"}}> 
-               This app is not supported on {networkName}. Please connect to {process.env.NEXT_PUBLIC_NETWORK}
+               This app is not supported on {networkName}. <br/> Please connect to {process.env.NEXT_PUBLIC_NETWORK}
               </Alert>
           </Center>
       </Page>
@@ -224,7 +196,7 @@ export default class IndexPage extends React.Component {
                               {this.state.info.detail} 
                       </AlertDismissible> 
                     }
-                    <div> Here are some stats about your investment in the pool</div>
+                    <div> Your stats</div>
 
                     <PortfolioInfoView 
                       deposited={deposited} 
@@ -265,6 +237,12 @@ export default class IndexPage extends React.Component {
                        targetInvestPercent={strategyTargetInvestPercent}
                        pricefeedAddress={strategyPricefeedAddress}
                        rebalancingThreshold={strategyRebalancingThreshold}
+                       depositTokenBalance={depositTokenBalance}
+                       investTokenBalance={investTokenBalance}
+                       depositTokenSymbol={depositTokenSymbol}
+                       investTokenSymbol={investTokenSymbol}
+                       latestFeedPrice={latestFeedPrice}
+                       latestFeedTimestamp={latestFeedTimestamp}
                     />
 
                     <div className="mt-4"></div>

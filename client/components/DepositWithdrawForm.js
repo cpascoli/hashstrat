@@ -1,5 +1,5 @@
 import React from 'react'
-import { Container, Row, Col, Form, Button, InputGroup, ButtonToolbar, ButtonGroup } from 'react-bootstrap'
+import { Container, Row, Col, Form, Button, InputGroup, Card } from 'react-bootstrap'
 import { getAllowance, approve } from "../web3/usdc"
 import { deposit, withdraw } from "../web3/pool"
 
@@ -134,48 +134,51 @@ export default class DepositWithdrawForm extends React.Component {
         if (!title) return (<div>Error</div>)
 
         return (
-            <div>
-                <h3 className="text-center">{title}</h3>
+            <Card>
+   
+                <Card.Header as="h5">{title}</Card.Header>
+           
+                <Card.Body>
+                    <Form className="p-4">
+                        <Form.Group row controlId="stakeAmount">
+                        
+                            <Form.Label variant="secondary" className="w-100 text-end text-muted" >Balance: {balance}</Form.Label>
+                            <InputGroup className="mb-3">
+                                <Form.Control
+                                    type="text" placeholder="0.0" autoComplete="off" value={this.state.amount}
+                                    title="balance not staked" onChange={e => this.updateAmount(e)}
+                                />
+                                <InputGroup.Text> {depositTokenSymbol} </InputGroup.Text>
+                            </InputGroup>
 
-                <Form className="p-4">
-                    <Form.Group row controlId="stakeAmount">
-                       
-                        <Form.Label variant="secondary" className="w-100 text-end text-muted" >Balance: {balance}</Form.Label>
-                        <InputGroup className="mb-3">
-                            <Form.Control
-                                type="text" placeholder="0.0" autoComplete="off" value={this.state.amount}
-                                title="balance not staked" onChange={e => this.updateAmount(e)}
-                            />
-                            <InputGroup.Text> {depositTokenSymbol} </InputGroup.Text>
-                        </InputGroup>
+                        </Form.Group>
+                
+                        <Container>
+                            <Row >
+                            <Col className="m-0 p-2"> <Button onClick={() => this.setAmount(25)} className="w-100" variant="outline-secondary">25%</Button> </Col>
+                            <Col className="m-0 p-2"> <Button onClick={() => this.setAmount(50)} className="w-100" variant="outline-secondary">50%</Button> </Col>     
+                            <Col className="m-0 p-2"> <Button onClick={() => this.setAmount(75)} className="w-100" variant="outline-secondary">75%</Button> </Col>
+                            <Col className="m-0 p-2"> <Button onClick={() => this.setAmount(100)} className="w-100" variant="outline-secondary">Max</Button> </Col>
+                            </Row>
+                        </Container>
 
-                    </Form.Group>
-            
-                    <Container>
-                        <Row >
-                           <Col className="m-0 p-2"> <Button onClick={() => this.setAmount(25)} className="w-100" variant="outline-secondary">25%</Button> </Col>
-                           <Col className="m-0 p-2"> <Button onClick={() => this.setAmount(50)} className="w-100" variant="outline-secondary">50%</Button> </Col>     
-                           <Col className="m-0 p-2"> <Button onClick={() => this.setAmount(75)} className="w-100" variant="outline-secondary">75%</Button> </Col>
-                           <Col className="m-0 p-2"> <Button onClick={() => this.setAmount(100)} className="w-100" variant="outline-secondary">Max</Button> </Col>
-                        </Row>
-                    </Container>
-
-                    <div style={{ textAlign: "center" }} className="mt-4">
-                        {this.state.validAmount && !this.state.sufficientAllowance && this.state.formType === 'deposit' &&
-                            <Button name="allow" type="button" variant="primary w-50"
-                                onClick={e => this.allowButtonPressed()} className="pl-2">
-                                Allow token transfer
+                        <div style={{ textAlign: "center" }} className="mt-4">
+                            {this.state.validAmount && !this.state.sufficientAllowance && this.state.formType === 'deposit' &&
+                                <Button name="allow" type="button" variant="primary w-50"
+                                    onClick={e => this.allowButtonPressed()} className="pl-2">
+                                    Allow token transfer
+                                </Button>
+                            }
+                            &nbsp;&nbsp;&nbsp;
+                            {<Button variant="primary w-25" onClick={this.submitForm}
+                                disabled={!(this.state.validAmount && (this.state.formType === 'withdraw' || this.state.sufficientAllowance))}>
+                                {title}
                             </Button>
-                        }
-                        &nbsp;&nbsp;&nbsp;
-                        {<Button variant="primary w-25" onClick={this.submitForm}
-                            disabled={!(this.state.validAmount && (this.state.formType === 'withdraw' || this.state.sufficientAllowance))}>
-                            {title}
-                        </Button>
-                        }
-                    </div>
-                </Form>
-            </div>
+                            }
+                        </div>
+                    </Form>
+                </Card.Body>
+            </Card>
         )
 
     }

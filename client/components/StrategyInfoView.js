@@ -1,11 +1,24 @@
 import { Form, Container, Row, Col, Card } from 'react-bootstrap'
+import { round, convertHMS } from '../web3/utils'
 
 import { getInstance } from '../web3/provider'
 
-const StrategyInfoView = ( { name, description, targetInvestPercent, rebalancingThreshold, pricefeedAddress } ) => {
+const StrategyInfoView = ( { name, description, targetInvestPercent, rebalancingThreshold, pricefeedAddress,
+   depositTokenBalance, investTokenBalance, depositTokenSymbol, investTokenSymbol, latestFeedPrice, latestFeedTimestamp} ) => {
   
   const networkExplorerHost = getInstance().getInfo().networkExplorerHost
   const investPercText =  targetInvestPercent && <span> {targetInvestPercent} %  / {(100 - targetInvestPercent )}%  </span>
+  
+  const targetPercUp =  (parseInt(targetInvestPercent) + parseInt(rebalancingThreshold) ) / 100
+  const targetPercDown =  (parseInt(targetInvestPercent) - parseInt(rebalancingThreshold) ) / 100
+
+  const rebalancingUpperBandPrice = round( targetPercUp  * depositTokenBalance / (investTokenBalance - targetPercUp  * investTokenBalance))
+  const rebalancingLowerBandPrice = round( targetPercDown  * depositTokenBalance / (investTokenBalance - targetPercDown  * investTokenBalance))
+
+  const formattedPriceTimestant = new Date(latestFeedTimestamp * 1000).toLocaleTimeString()
+  const formattedPrice = round(latestFeedPrice)
+
+
 
   return (
 
@@ -37,9 +50,24 @@ const StrategyInfoView = ( { name, description, targetInvestPercent, rebalancing
             </Form.Group>
 
             <Form.Group as={Row} controlId="deposit-token-address">
-              <Form.Label column className="text-start"> Regalancing Thereshold </Form.Label>
+              <Form.Label column className="text-start"> Rebalancing Band </Form.Label>
               <Form.Label column className="text-end"> {rebalancingThreshold} % </Form.Label>
             </Form.Group>
+
+            <Form.Group as={Row} controlId="invest-token-address">
+              <Form.Label column className="text-start">Rebalancing pool when</Form.Label>
+              <Form.Label column className="text-end">
+               {investTokenSymbol} above   {rebalancingUpperBandPrice} {depositTokenSymbol} or below  {rebalancingLowerBandPrice} {depositTokenSymbol} 
+              </Form.Label>
+            </Form.Group>
+
+            <Form.Group as={Row} controlId="invest-token-address">
+              <Form.Label column className="text-start"> Current {investTokenSymbol} feed price</Form.Label>
+              <Form.Label column className="text-end">
+                    {formattedPrice} {depositTokenSymbol} at {formattedPriceTimestant}
+              </Form.Label> 
+            </Form.Group>
+            
 
             <Form.Group as={Row} controlId="invest-token-address">
               <Form.Label column className="text-start">Pricefeed Contract</Form.Label>

@@ -36,7 +36,7 @@ export default class Header extends React.Component {
     reload = async () => {
         await this.loadNetworkInfo()
         await this.loadAccount()
-        await this.loadBalance()
+        await this.loadBalances()
         await this.loadSymbol()
     }
 
@@ -89,7 +89,7 @@ export default class Header extends React.Component {
         })
     }
 
-    loadBalance = () => {
+    loadBalances = () => {
         getBalanceUSDC().then(data => {
             this.setState({
                 balanceUSDC: data.units
