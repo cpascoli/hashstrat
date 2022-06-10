@@ -78,6 +78,7 @@ export default class IndexPage extends React.Component {
         this.setState({ ...data })
         return loadStrategyInfo()
     }).then(info => {
+      console.log(">>> info:", info)
       this.setState({ ...info })
     }).catch(error => {
         this.setState({ error: error.message })

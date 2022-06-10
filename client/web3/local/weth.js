@@ -1,5 +1,6 @@
-import { toTokenDecimals, toNumber, getAccount } from '../utils'
+import truffleContract from "@truffle/contract";
 
+import { toTokenDecimals, toNumber, getAccount } from '../utils'
 import WETH from "../artifacts/WETH.json"
 import Pool from "../artifacts/Pool.json"
 
@@ -16,21 +17,20 @@ export const getInterface = () => {
 
 
 export const getInstance = artifact => {
-  const contractObj = contract(artifact)
-  contractObj.setProvider(provider())
-
-  return contractObj.deployed();
+  const contract = truffleContract(artifact); 
+  contract.setProvider(window.ethereum);
+  return contract.deployed();
 }
 
 
 export const getBalance = async () => {
 
-  console.log('>>>>> local balance: ', balance);
-
   const weth = await getInstance(WETH)
   const decimals = await weth.decimals.call()
   const account = await getAccount()
   const balance = await weth.balanceOf.call(account)
+
+  console.log('>>>>> local weth balance: ', balance);
 
   return {
       balance: balance.toString(),
@@ -65,6 +65,6 @@ export const approve = async (amount) => {
 
 export const symbol = async() => {
   const weth = await getInstance(WETH)
-  const response = await weth.symbol()
+  const response = await weth.symbol.call()
   return response
 }

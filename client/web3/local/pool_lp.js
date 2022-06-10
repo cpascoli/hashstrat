@@ -1,5 +1,6 @@
-import { toTokenDecimals, toNumber, getAccount } from '../utils'
+import truffleContract from "@truffle/contract";
 
+import { toTokenDecimals, toNumber, getAccount } from '../utils'
 import PoolLPToken from "../artifacts/PoolLPToken.json"
 import Pool from "../artifacts/Pool.json"
 
@@ -16,10 +17,9 @@ export const getInterface = () => {
 
 
 export const getInstance = artifact => {
-  const contractObj = contract(artifact)
-  contractObj.setProvider(provider())
-
-  return contractObj.deployed();
+  const contract = truffleContract(artifact); 
+  contract.setProvider(window.ethereum);
+  return contract.deployed();
 }
 
 
@@ -28,6 +28,8 @@ export const getBalance = async () => {
   const account = await getAccount()
   const balance = await poolLP.balanceOf.call(account)
   const decimals = await poolLP.decimals.call()
+  console.log('>>>>> local poollp balance: ', balance);
+
   return {
       balance: balance.toString(),
       units: await toNumber(decimals, balance, 4)
@@ -61,6 +63,6 @@ export const approve = async (amount) => {
 
 export const symbol = async() => {
   const poolLP = await getInstance(PoolLPToken)
-  const response = await poolLP.symbol()
+  const response = await poolLP.symbol.call()
   return response
 }

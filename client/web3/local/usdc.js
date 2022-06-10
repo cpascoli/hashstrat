@@ -1,5 +1,6 @@
-import { toTokenDecimals, toNumber, getAccount } from '../utils'
+import truffleContract from "@truffle/contract";
 
+import { toTokenDecimals, toNumber, getAccount } from '../utils'
 import USDCP from "../artifacts/USDCP.json"
 import Pool from "../artifacts/Pool.json"
 
@@ -16,21 +17,19 @@ export const getInterface = () => {
 
 
 export const getInstance = artifact => {
-  const contractObj = contract(artifact)
-  contractObj.setProvider(provider())
-
-  return contractObj.deployed();
+  const contract = truffleContract(artifact); 
+  contract.setProvider(window.ethereum);
+  return contract.deployed();
 }
 
 
 export const getBalance = async () => {
-
-  console.log('>>>>> local balance: ', balance);
-
   const usdcp = await getInstance(USDCP)
   const decimals = await usdcp.decimals.call()
   const account = await getAccount()
   const balance = await usdcp.balanceOf.call(account)
+
+  console.log('>>>>> local usdc balance: ', balance);
 
   return {
       balance: balance.toString(),
@@ -65,6 +64,6 @@ export const approve = async (amount) => {
 
 export const symbol = async() => {
   const usdcp = await getInstance(USDCP)
-  const response = await usdcp.symbol()
+  const response = await usdcp.symbol.call()
   return response
 }
