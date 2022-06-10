@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.6;
+pragma solidity 0.8.14;
 
-import "@chainlink/contracts/src/v0.6/interfaces/KeeperCompatibleInterface.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./Wallet.sol";
 import "./IUniswapV2Router.sol";
 import "./PriceConsumerV3.sol";
 import "./PoolLPToken.sol";
 import "./strategies/IStrategy.sol";
-import "./IERC20Metadata.sol";
 import "./IPool.sol";
 import "./IPriceFeed.sol";
 
@@ -47,7 +47,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         address _investTokenAddress, 
         address _lpTokenAddress,
         address _strategyAddress,
-        uint _updateInterval) public Wallet(_depositTokenAddress) {
+        uint _updateInterval) Wallet(_depositTokenAddress) {
 
         investToken = IERC20Metadata(_investTokenAddress);
         uniswapV2Router = IUniswapV2Router(_uniswapV2RouterAddress);

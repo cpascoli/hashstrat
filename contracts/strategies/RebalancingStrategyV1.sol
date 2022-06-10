@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.6;
+pragma solidity 0.8.14;
 
-import "../../node_modules/@openzeppelin/contracts/access/Ownable.sol";
-import "../IERC20Metadata.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
 import "./IStrategy.sol";
 import "./../IPool.sol";
 import "../IPriceFeed.sol";
@@ -37,7 +38,7 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         address _investTokenAddress,
         uint _targetInvestPerc,
         uint _rebalancingThreshold
-    ) public {
+    ) {
         pool = IPool(_poolAddress);
         feed = IPriceFeed(_feedAddress);
         depositToken = IERC20Metadata(_depositTokenAddress);
@@ -46,11 +47,11 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         rebalancingThreshold = _rebalancingThreshold;
     }
 
-    function name() public override view returns(string memory _) {
+    function name() public override pure returns(string memory) {
         return "RebalancingStrategyV1";
     }
 
-    function description() public override view returns(string memory _) {
+    function description() public override pure returns(string memory) {
         return "A simple rebalancing strategy to rebalance a 2 token portfolio";
     }
 
@@ -66,7 +67,7 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         maxPriceAge = secs;
     }
 
-    function setPool(uint _poolAddress) public onlyOwner {
+    function setPool(address _poolAddress) public onlyOwner {
         pool = IPool(_poolAddress);
     }
 

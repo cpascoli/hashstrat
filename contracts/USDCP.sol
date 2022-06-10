@@ -1,15 +1,15 @@
-// name: USDCP Token
-// symbol: USDCP
-
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.6;
+pragma solidity 0.8.14;
 
-import "../node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract USDCP is ERC20 {
 
-    constructor(uint256 initialSupply) ERC20("USDCP Token", "USDCP") public {
+    constructor(uint256 initialSupply) ERC20("USDCP Token", "USDCP") {
         _mint(msg.sender, initialSupply);
-        _setupDecimals(6);
+    }
+
+    function decimals() public pure override returns (uint8) {
+        return 6;
     }
 }

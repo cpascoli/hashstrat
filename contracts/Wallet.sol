@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.6;
+pragma solidity 0.8.14;
 
-import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../node_modules/@openzeppelin/contracts/access/Ownable.sol";
-import "./IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Wallet is Ownable {
 
@@ -22,7 +22,7 @@ contract Wallet is Ownable {
     mapping (address => bool) internal users;
     IERC20Metadata internal depositToken;
 
-    constructor(address _depositTokenAddress) public {
+    constructor(address _depositTokenAddress) {
         depositToken = IERC20Metadata(_depositTokenAddress);
     }
 

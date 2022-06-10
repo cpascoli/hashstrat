@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6.6;
+pragma solidity 0.8.14;
 
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+
 import "./IUniswapV2Router.sol";
-import "./IERC20Metadata.sol";
+
 
 /**
     Mock implementation of swap functionality and price feed via the interfaces:
@@ -24,7 +26,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
     event Swapped(string direction, uint256 amountIn, uint256 amountOut, uint256 price, uint slippage);
 
-    constructor(address _depositTokenAddress, address _investTokenAddress) public  {
+    constructor(address _depositTokenAddress, address _investTokenAddress) {
          depositToken = IERC20Metadata(_depositTokenAddress);
          investToken = IERC20Metadata(_investTokenAddress);
          price = 2 * pricePrecision;
@@ -48,7 +50,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
 
     //// UniswapV2Router interface implementation
 
-    function WETH() external override returns (address addr) {
+    function WETH() external override view returns (address addr) {
         // assume the WETH intermediary token for token-to-token swaps is the investToken address
         return address(investToken);
     }
