@@ -1,4 +1,4 @@
-import { myWeb3, eth } from './provider'
+import { myWeb3 } from './provider'
 
 // from int to string
 export const toTokenDecimals = async (decimals, amount) => {
@@ -33,7 +33,7 @@ export const shortenAccount = (account) => {
 }
 
 export const getAccount = async () => {
-    const accounts = await eth.getAccounts()
+    const accounts = await myWeb3.eth.getAccounts()
     if (accounts.length == 0) {
         console.log("getAccount() - No account found", accounts)
         throw Error("No account found! Please connect a wallet and try again!")

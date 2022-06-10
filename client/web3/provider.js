@@ -25,14 +25,13 @@ import { getInterface as strategyLocal } from './local/strategy'
 const provider = () => {
   // If the user has MetaMask:
   if (typeof web3 !== 'undefined') {
-    return web3.currentProvider
+    return window.ethereum
   } else {
     console.error("You need to install MetaMask for this app to work!")
   }
 }
 
 
-export const eth = new Web3(provider()).eth
 export const myWeb3 = new Web3(provider())
 
 export const getInstance = () => {

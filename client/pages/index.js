@@ -81,7 +81,7 @@ export default class IndexPage extends React.Component {
       console.log(">>> info:", info)
       this.setState({ ...info })
     }).catch(error => {
-        this.setState({ error: error.message })
+      console.log(">>>  error", error)
     })
 
   }
@@ -163,7 +163,7 @@ export default class IndexPage extends React.Component {
       </Page>
     )
 
-    if (!accountConnected) return (
+    if (!networkId || !accountConnected) return (
       <Page>
           <Header ref={this.headerRef} reload={() => this.reload()} setAccountConnected={info => this.setAccountConnected(info)}/>
           <div className="d-inline-block" />
