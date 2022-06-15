@@ -25,18 +25,16 @@ contract("Pool", accounts => {
     let priceFeed
     let lptoken
     let strategy
-
-    // this should match Pool::portFolioPercentagePrecision
-    const precision = 10**18
+    let precision
 
     beforeEach(async () => {
         usdcp = await USDCP.new(toUsdc('100000'))
         weth = await WETH.new(toWei('1000'))
-        lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 18)
+        lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 6)
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
-        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', priceFeed.address, usdcp.address, weth.address, 60, 20)
+        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', priceFeed.address, usdcp.address, weth.address, 60, 2)
         pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
         
         await lptoken.addMinter(pool.address)
@@ -45,12 +43,14 @@ contract("Pool", accounts => {
         await strategy.setPool(pool.address)
 
         // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
-        await usdcp.transfer(uniswap.address, toUsdc('10000'))
-        await weth.transfer(uniswap.address, toWei('1000'))
+        await usdcp.transfer(uniswap.address, toUsdc('50000'))
+        await weth.transfer(uniswap.address, toWei('500'))
 
         // Give some inital usdcp tokens to account1 and account2
         await usdcp.transfer(account1, toUsdc('1000'))
         await usdcp.transfer(account2, toUsdc('1000'))
+
+        precision = 10 ** (await pool.portfolioPercentageDecimals()) // (8 digits datafeed & portfolio % precision)
     })
 
 
@@ -98,6 +98,9 @@ contract("Pool", accounts => {
 
     it("withdraw after price increase", async () => {
 
+        await uniswap.setPrice(2000) // ETH is at $2000
+        const precision = 10 ** (await pool.portfolioPercentageDecimals()) // (8 digits precision)
+
         let balanceBefore = await usdcp.balanceOf(pool.address)
         assert.equal(balanceBefore, 0, "Account should have no balance")
 
@@ -122,8 +125,6 @@ contract("Pool", accounts => {
         assert.equal(fromUsdc((await pool.totalPortfolioValue())), 160, "Invalid total portfolio value before")
         assert.equal((await pool.portfolioPercentage(account1)) * 100 / precision, 37.5, "Invalid account1 portfolio % before")
         assert.equal((await pool.portfolioPercentage(account2)) * 100 / precision, 62.5, "Invalid account2 portfolio % before")
-  
-        await uniswap.setPrice(2000) // ETH is at $2000
 
         const price1 = await priceFeed.getLatestPrice()
         await pool.invest()  // invest 96 USDC into eth

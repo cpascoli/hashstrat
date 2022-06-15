@@ -18,7 +18,10 @@ module.exports = {
       network_id: 1337,
       accounts: 5,
       defaultEtherBalance: 500,
-      blockTime: 3
+      blockTime: 3,
+      timeoutBlocks: 200,
+      networkCheckTimeout: 60000,
+      gasPrice: 500000000,
     },
     cldev: {
       host: '127.0.0.1',

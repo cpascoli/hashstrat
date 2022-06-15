@@ -57,8 +57,23 @@ export const approve = async (amount) => {
   const decimals = await usdcp.decimals.call()
   const tokenDecimals = await toTokenDecimals(decimals, amount)
 
-  const response = await usdcp.approve(pool.address, tokenDecimals, {from: account});
-  return response
+  //const response = await usdcp.approve(pool.address, tokenDecimals, {from: account});
+  console.log("approve request >> ", amount);
+
+  return new Promise((resolve, reject) => {
+    usdcp.approve(pool.address, tokenDecimals, {
+      from: account, 
+      gasPrice: '50000000000'
+    }).then( receipt => {
+         // status, transactionHash, gasUsed, cumulativeGasUsed, effectiveGasPrice, blockNumber, blockHash,
+         console.log("approve receipt >> ", receipt);
+         resolve(receipt)
+     }).catch((err) => {
+       console.log("approve error:", err);
+       reject(err)
+     });
+ })
+
 }
 
 

@@ -10,12 +10,13 @@ contract PriceConsumerV3 is IPriceFeed {
     AggregatorV3Interface internal priceFeed;
 
     /**
-     * Network: Kovan
-     * Aggregator: ETH/USD
-     * Address: 0x9326BFA02ADD2366b30bacB125260Af641031331
+      * Chainlink pricefeed addresses.
+      *
+      * Aggregator: ETH/USD
+      * Kovan: '0x9326BFA02ADD2366b30bacB125260Af641031331'
+      * Polygon: '0xF9680D99D6C9589e2a93a78A04A279e509205945'
      */
     constructor(address _priceFeed) {
-        //priceFeed = AggregatorV3Interface(0x9326BFA02ADD2366b30bacB125260Af641031331);
         priceFeed = AggregatorV3Interface(_priceFeed);
     }
 

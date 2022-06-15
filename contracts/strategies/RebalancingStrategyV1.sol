@@ -19,7 +19,7 @@ import "../IPriceFeed.sol";
  */
 contract RebalancingStrategyV1 is IStrategy, Ownable {
 
-    event StrategyInfo( uint investPerc, uint investTokenValue, uint upperBound, uint lowerBound);
+    event StrategyInfo( uint investPerc, uint investTokenValue, uint lowerBound, uint upperBound);
 
     uint public maxPriceAge = 6 * 60 * 60; // use prices old 6h max (in Kovan prices are updated every few hours)
     uint public targetInvestPerc;  // [0-100] interval
@@ -111,10 +111,6 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
             }
         }
         
-        // uint depositPerc = 100 - investPerc;   // 100 * depositTokenValue / poolValue; |||  100 - investPerc;
-        // uint targetDepositPerc = 100 - targetInvestPerc;
-
-
         if (investPerc <= (targetInvestPerc - rebalancingThreshold)) {
             
             uint deltaPerc = targetInvestPerc - investPerc;

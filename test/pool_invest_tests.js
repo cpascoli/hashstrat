@@ -24,18 +24,16 @@ contract("Pool", accounts => {
     let priceFeed
     let lptoken
     let strategy
-
-    // this should match Pool::portFolioPercentagePrecision
-    const precision = 10**18
+    let precision
 
     beforeEach(async () => {
         usdcp = await USDCP.new(toUsdc('100000'))
-        weth = await WETH.new(toWei('1000'))
-        lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 18)
+        weth = await WETH.new(toWei('10000'))
+        lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 6)
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
-        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', priceFeed.address, usdcp.address, weth.address, 60, 20)
+        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', priceFeed.address, usdcp.address, weth.address, 60, 2)
         pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
         
         await lptoken.addMinter(pool.address)
@@ -44,80 +42,92 @@ contract("Pool", accounts => {
         await strategy.setPool(pool.address)
 
         // Give the mock uniswap some USD/WETH liquidity to uniswap to performs some swaps
-        await usdcp.transfer(uniswap.address, toUsdc('10000'))
-        await weth.transfer(uniswap.address, toWei('1000'))
+        await usdcp.transfer(uniswap.address, toUsdc('20000'))
+        await weth.transfer(uniswap.address, toWei('200'))
 
         // Give some inital usdcp tokens to account1 and account2
         await usdcp.transfer(account1, toUsdc('1000'))
-        await usdcp.transfer(account2, toUsdc('1000'))        
+        await usdcp.transfer(account2, toUsdc('1000'))
+        
+        precision = 10 ** (await pool.portfolioPercentageDecimals()) // (8 digits precision)
     })
 
 
-    // Test invest function
+   // Test invest function
 
     it("Rebalance portfolio swapping deposit tokens for invest tokens", async () => {
+        await uniswap.setPrice(2000)
 
         // deposit 100 USDCP 
         let depositAmount = toUsdc('100')
         await usdcp.approve(pool.address, depositAmount)
         await pool.deposit(depositAmount)
 
-        let balanceUsdcBefore = await usdcp.balanceOf(pool.address)
-        assert.equal(balanceUsdcBefore, depositAmount , "Pool should have the expected deposit tokens")
-
-        let balanceWethBefore = await weth.balanceOf(pool.address)
-        assert.equal(balanceWethBefore, 0, "Pool should have no invested tokens")
+        // calculate expected token balances
+        const targetInvestPerc = await strategy.targetInvestPerc.call()
+        const price0 = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        const depositTokensExpected0 = fromUsdc(depositAmount) * (100 - targetInvestPerc) / 100
+        const investTokensExpected0 = fromUsdc(depositAmount) * targetInvestPerc / 100 / price0
+      
+        let balanceUsdcBefore = fromUsdc(await usdcp.balanceOf(pool.address))
+        let balanceWethBefore = fromWei(await weth.balanceOf(pool.address))
+        assert.equal(balanceUsdcBefore, depositTokensExpected0 , "Pool should have the expected deposit tokens")
+        assert.equal(balanceWethBefore, investTokensExpected0, "Pool should have no invested tokens")
        
-        await uniswap.setPrice(2000)
+        await uniswap.setPrice(3000)
 
         // rebalance portfolio to 60%/40%
         await pool.invest()
 
-        let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
-        let balanceWethAfter = await weth.balanceOf(pool.address)
+        let balanceUsdcAfter = fromUsdc(await usdcp.balanceOf(pool.address))
+        let balanceWethAfter = fromWei(await weth.balanceOf(pool.address))
 
         // calculate expected token balances
-        const targetInvestPerc = await strategy.targetInvestPerc.call()
-        const price = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
-        const depositTokensExpected = fromUsdc(depositAmount) * (100 - targetInvestPerc) / 100
-        const investTokensExpected = fromUsdc(depositAmount) * targetInvestPerc / 100 / price
+        const price1 = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        const portfolioValue = Number(balanceUsdcBefore) + (Number(balanceWethBefore) * price1)
+        const depositTokensExpected1 = portfolioValue * (100 - targetInvestPerc) / 100
+        const investTokensExpected1 = portfolioValue * targetInvestPerc / 100 / price1
 
-        assert.equal(fromUsdc(balanceUsdcAfter), depositTokensExpected, "Invalid deposit balance after invest")
-        assert.equal(fromWei(balanceWethAfter), investTokensExpected, "Invalid invest balance after invest")
+        assert.equal(balanceUsdcAfter, depositTokensExpected1, "Invalid deposit balance after invest")
+        assert.equal(balanceWethAfter, investTokensExpected1, "Invalid invest balance after invest")
     })
 
 
     it("Rebalance portfoio with some slippage", async () => {
 
-         // set  5% max slippage and 3% on the trate
+        const slippage = 0.03
+        await uniswap.setPrice(2000)
+
+         // set 5% max slippage and 3% on the trade
         await pool.setSlippageThereshold(500)
-        await uniswap.setSlippage(400);
+        await uniswap.setSlippage(slippage * 10000);
 
-        // deposit 100 USDCP 
+        // transfer 100 USDCP 
         let depositAmount = toUsdc('100')
-        await usdcp.approve(pool.address, depositAmount)
-        await pool.deposit(depositAmount)
-
-        let balanceUsdcBefore = await usdcp.balanceOf(pool.address)
-        assert.equal(balanceUsdcBefore, depositAmount , "Pool should have the expected deposit tokens")
-
-        let balanceWethBefore = await weth.balanceOf(pool.address)
-        assert.equal(balanceWethBefore, 0, "Pool should have no invested tokens")
+        await usdcp.transfer(pool.address, depositAmount)
 
         // rebalance portfolio to 60%/40%
         await pool.invest()
 
-        let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
-        let balanceWethAfter = await weth.balanceOf(pool.address)
+        let balanceUsdc = fromUsdc(await usdcp.balanceOf(pool.address))
+        let balanceWeth = fromWei(await weth.balanceOf(pool.address))
 
         // calculate expected token balances, including 4% slippage
         const targetInvestPerc = await strategy.targetInvestPerc.call()
+        // const price = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        // const depositTokensExpected = fromUsdc(depositAmount) * (100 - targetInvestPerc) / 100
+        // const investTokensExpected = round( (fromUsdc(depositAmount) * targetInvestPerc / 100) / price * 0.96 , 10)
+
+
+        // calculate expected token balances
         const price = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
         const depositTokensExpected = fromUsdc(depositAmount) * (100 - targetInvestPerc) / 100
-        const invetTokensExpected = round( (fromUsdc(depositAmount) * targetInvestPerc / 100) / price * 0.96 , 10)
+        const investTokensExpected = fromUsdc(depositAmount) * targetInvestPerc / 100 / price * (1 - slippage) // account for 3% slippage
 
-        assert.equal(fromUsdc(balanceUsdcAfter), depositTokensExpected, "Invalid deposit balance after invest")
-        assert.equal(fromWei(balanceWethAfter), invetTokensExpected, "Invalid invest balance after invest")
+        assert.equal(balanceUsdc, depositTokensExpected, "Invalid deposit balance after invest")
+
+        // Invalid invest balance after invest: expected '0.0291' to equal 0.0288
+        assert.equal(balanceWeth, round(investTokensExpected, 4), "Invalid invest balance after invest")
     })
 
 
@@ -127,16 +137,9 @@ contract("Pool", accounts => {
          await pool.setSlippageThereshold(500)
          await uniswap.setSlippage(501);
  
-         // deposit 100 USDCP 
-         let depositAmount = toUsdc('100')
-         await usdcp.approve(pool.address, depositAmount)
-         await pool.deposit(depositAmount)
- 
-         let balanceUsdcBefore = await usdcp.balanceOf(pool.address)
-         assert.equal(balanceUsdcBefore, depositAmount , "Pool should have the expected deposit tokens")
- 
-         let balanceWethBefore = await weth.balanceOf(pool.address)
-         assert.equal(balanceWethBefore, 0, "Pool should have no invested tokens")
+        // transfer 100 USDCP 
+        let depositAmount = toUsdc('100')
+        await usdcp.transfer(pool.address, depositAmount)
 
         await truffleAssert.reverts(
             pool.invest({ gas: 1000000 })
@@ -146,11 +149,11 @@ contract("Pool", accounts => {
 
     it("Portfolio allocation and portfolio value for 2 accounts", async () => {
 
-        let balanceBefore = await usdcp.balanceOf(pool.address)
-        assert.equal(balanceBefore, 0, "Account should have no balance")
-
         let deposit1 = toUsdc('100')
         let deposit2 = toUsdc('200')
+
+        await pool.setSlippageThereshold(0)
+        await uniswap.setPrice(2000)  // 100 USDC => 40 USSC + 0.03 ETH
 
         // peform deposit for account1
         await usdcp.approve(pool.address, deposit1, { from: account1 })
@@ -164,7 +167,6 @@ contract("Pool", accounts => {
         assert.equal(fromUsdc(portfolioAllocation1), 100 , "Invalid first portfolio allocation")
 
         // swap tokens
-        await uniswap.setPrice(2000)  // 100 USDC => 40 USSC + 0.03 ETH
         await pool.invest()
 
         const portfolioValueAfterInvest = await pool.totalPortfolioValue()
@@ -188,6 +190,7 @@ contract("Pool", accounts => {
 
         
         // portfolio % for the 2 accounts should be 33.33% 66.66%
+        const precision = 10 ** (await pool.portfolioPercentageDecimals()) // (8 digits precision)
         const portfolioPercentage1 = await pool.portfolioPercentage(account1) * 100 / precision
         assert.equal(round(portfolioPercentage1), 33.33)
 
@@ -197,7 +200,7 @@ contract("Pool", accounts => {
         // swap tokens
         await pool.invest()
 
-         // portfolio % for the 2 accounts should still be 33.33% 66.66%
+        // portfolio % for the 2 accounts should still be 33.33% 66.66%
         const portfolioPercentage1after = await pool.portfolioPercentage(account1) * 100 / precision
         assert.equal(round(portfolioPercentage1after), 33.33)
 

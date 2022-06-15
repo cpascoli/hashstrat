@@ -21,8 +21,8 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     IERC20Metadata internal investToken;
 
     uint public price;
-    uint pricePrecision = 10**8;
-    uint slippage = 0; // 5% slippage
+    uint public pricePrecision = 10**8;
+    uint public slippage = 0; // slippage percent using 4 decimals (e.g 2% slippage is 200)
 
     event Swapped(string direction, uint256 amountIn, uint256 amountOut, uint256 price, uint slippage);
 
@@ -124,6 +124,7 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
                     amountIn * (10 ** (depositTokenDecimals - investTokensDecimals));
 
             uint amount = amountInAdjusted * price / pricePrecision * (10000 - uint(slippage)) / 10000;
+            
             require(depositToken.balanceOf(address(this)) >= amount, "Not enough USD in the pool");
             depositToken.transfer(to, amount);
 
