@@ -26,14 +26,6 @@ contract Wallet is Ownable {
         depositToken = IERC20Metadata(_depositTokenAddress);
     }
 
-    function getDeposits() external view returns (uint) {
-        return deposits[msg.sender];
-    }
-
-    function getWithdrawals() external view returns (uint) {
-        return withdrawals[msg.sender];
-    }
-
     function deposit(uint amount) public virtual {
         require(amount > 0, "Deposit amount is 0");
         require(depositToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance to deposit");
