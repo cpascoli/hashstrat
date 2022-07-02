@@ -18,8 +18,6 @@ import { PoolLib } from  "./PoolLib.sol";
 contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     event Swapped(string swapType, uint spent, uint bought, uint slippage);
-    event Deposited(uint amount, uint depositLP, uint totalPortfolioLP);
-    event Withdrawn(uint amountWithdrawn, uint lpWithdrawn);
     event SlippageInfo(uint slippage, uint thereshold, uint amountIn, uint amountMin);
 
 
@@ -68,15 +66,14 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     //////  PORTFOLIO FUNCTIONS
 
-    function depositTokenBalance() external view returns(uint256) {
-        return depositToken.balanceOf(address(this));
-    }
+    // function depositTokenBalance() external view returns(uint256) {
+    //     return depositToken.balanceOf(address(this));
+    // }
 
 
-    function investTokenBalance() external view returns(uint256) {
-        return investToken.balanceOf(address(this));
-    }
-
+    // function investTokenBalance() external view returns(uint256) {
+    //     return investToken.balanceOf(address(this));
+    // }
 
 
     // returns the value of the deposit tokens in USD using the latest pricefeed price
@@ -120,13 +117,13 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     }
 
     //////  PRICEFEED FUNCTIONS
-    function latestFeedPrice() public view returns(int) {
-        return priceFeed.getLatestPrice();
-    }
+    // function latestFeedPrice() public view returns(int) {
+    //     return priceFeed.getLatestPrice();
+    // }
 
-    function latestFeedTimestamp() public view returns(uint) {
-        return priceFeed.getLatestTimestamp();
-    }
+    // function latestFeedTimestamp() public view returns(uint) {
+    //     return priceFeed.getLatestTimestamp();
+    // }
 
 
     //////  USER FUNCTIONS
@@ -203,9 +200,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             swapIfNotExcessiveSlippage(StrategyAction.BUY, address(depositToken), address(investToken), rebalanceAmount, false);
         }
 
-
         lpToken.mint(msg.sender, depositLPTokens);
-        emit Deposited(amount, depositLPTokens, lpToken.totalSupply());
     }
 
 
@@ -231,7 +226,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     }
 
     // Withdraw the amount of lp tokens provided
-    function withdrawLP(uint amount) public  {
+    function withdrawLP(uint amount) public {
 
         require(amount > 0, "Invalid LP amount");
         require(lpToken.totalSupply() > 0, "No LP tokens minted");
@@ -268,16 +263,18 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         // transfer depositTokens to the user
         uint amountToWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;        
         super.withdraw(amountToWithdraw);
-
-        emit Withdrawn(amountToWithdraw, amount);
     }
 
 
+    function getSwapsInfo() public view returns (PoolLib.SwapInfo[] memory) {
+        return swaps;
+    }
 
   
-    //  Compute the slippage for a trade. The returned percentage is returned with 4 digits decimals
-    //  E.g: For a 5% slippage below the expected amount 500 is returned
-    function slippagePercentage(address tokenIn, address tokenOut, uint amountIn, uint amountMin) public view returns (uint) {
+    // Returns the min amount of tokens expected from the swap and the slippage calculated as a percentage from the feed price. 
+    // The returned percentage is returned with 4 digits decimals
+    // E.g: For a 5% slippage below the expected amount 500 is returned
+    function slippagePercentage(address tokenIn, address tokenOut, uint amountIn) public view returns (uint amountMin, uint slippage) {
         
         require(priceFeed.getLatestPrice() > 0, "Invalid price");
 
@@ -302,10 +299,12 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             amountExpected = amountInAdjusted * price / pricePrecision;
         }
 
-        require(amountExpected > 0, "Invalid amount expected");
-        if (amountMin >= amountExpected) return 0;
+        require(amountExpected > 0, "Invalid expected amount received after swap. It should be greater than 0 but it was not.");
+       
+        amountMin = getAmountOutMin(tokenIn, tokenOut, amountIn);
+        if (amountMin >= amountExpected) return (amountMin, 0);
 
-        return 10000 - (10000 * amountMin / amountExpected); // e.g 10000 - 9500 = 500  (5% slippage)
+        slippage = 10000 - (10000 * amountMin / amountExpected); // e.g 10000 - 9500 = 500  (5% slippage)
     }
 
 
@@ -367,10 +366,8 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     function swapIfNotExcessiveSlippage(StrategyAction action, address _tokenIn, address _tokenOut, uint256 _amountIn, bool log) internal {
 
-        uint256 amountMin = getAmountOutMin(_tokenIn, _tokenOut, _amountIn);
-
         // ensure slippage is not too much (e.g. <= 500 for a 5% slippage)
-        uint slippage = slippagePercentage(_tokenIn, _tokenOut, _amountIn, amountMin);
+        (uint amountMin, uint slippage) = slippagePercentage(_tokenIn, _tokenOut, _amountIn);
         emit SlippageInfo(slippage, slippageThereshold, _amountIn, amountMin);
 
         if (slippage > slippageThereshold) {
@@ -434,12 +431,17 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             swapPrice = pricePrecision * amountOut / amountInAdjusted;
         }
 
+        uint256 depositTokenBalanceAfter = depositToken.balanceOf(address(this));
+        uint256 investTokenBalanceAfter = investToken.balanceOf(address(this));
+
         // Record swap info
         PoolLib.SwapInfo memory info = PoolLib.SwapInfo({
             timestamp: block.timestamp,
             side: swapType,
             feedPrice: feedPrice,
-            swapPrice:swapPrice
+            swapPrice: swapPrice,
+            depositTokenBalance: depositTokenBalanceAfter,
+            investTokenBalance: investTokenBalanceAfter
         });
 
         swaps.push(info);
@@ -502,8 +504,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         uint256[] memory amountOutMins = uniswapV2Router.getAmountsOut(_amountIn, path);
         require(amountOutMins.length >= path.length , "Invalid amountOutMins size");
 
-        uint amountOut = amountOutMins[path.length - 1];
-        return amountOut;
+        return amountOutMins[path.length - 1];
     }
 
 }

@@ -17,7 +17,7 @@ contract("Wallet", accounts => {
 
 
     it("deposit tokens into the wallet should increase the deposit balance", async () => {
-        let depositsBefore = await wallet.getDeposits()
+        let depositsBefore = await wallet.deposits(defaultAccount)
         assert.equal(depositsBefore, 0, "Account should have no balance")
 
         // deposit 1 USD
@@ -25,13 +25,13 @@ contract("Wallet", accounts => {
         await usdcp.approve(wallet.address, depositAmount)
         await wallet.deposit(depositAmount)
 
-        let deposits = await wallet.getDeposits()
+        let deposits = await wallet.deposits(defaultAccount)
         assert.equal(deposits, depositAmount , "Account should have expected token balance")
     })
 
 
     it("withdraw tokens from the wallet should increase the withdrawals balance", async () => {
-        let deposits = await wallet.getDeposits()
+        let deposits = await wallet.deposits(defaultAccount)
         assert.equal(deposits, 0, "Account should have no deposits")
 
         // deposit 100 USDCP 
@@ -43,13 +43,13 @@ contract("Wallet", accounts => {
         let withdrawAmount = 30
         await wallet.withdraw(withdrawAmount)
 
-        let withdrawals = await wallet.getWithdrawals()
+        let withdrawals = await wallet.withdrawals(defaultAccount)
         assert.equal(withdrawals, withdrawAmount , "Account shuld have the expected withdrawals balance")
     })
 
 
     it("attempting to withdraw more tokens than available in balance should throw", async () => {
-        let deposits = await wallet.getDeposits()
+        let deposits = await wallet.deposits(defaultAccount)
         assert.equal(deposits, 0, "Account should have no deposits")
 
         // deposit 100 tokens 

@@ -11,8 +11,8 @@ const USDC_MATIC = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
 module.exports = async (deployer, network, [defaultAccount]) => {
 
   console.log("deploying PoolLPToken to ", network)
-  const name = "HashStrat LP Token"
-  const symbol = "HASHSTR-LP"
+  const name = "HashStrat LP (ETHUSD)"
+  const symbol = "HSETHUSDLP" 
 
   if (network.startsWith('develop')) {
     const decimals = 6;   // USDC has 6 decimals

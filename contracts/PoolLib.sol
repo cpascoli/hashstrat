@@ -8,6 +8,8 @@ library PoolLib {
         string side;
         uint feedPrice;
         uint swapPrice;
+        uint depositTokenBalance;
+        uint investTokenBalance;
     }
 
     function adjustAmountDecimals(uint tokenInDecimals, uint tokenOutDecimals, uint amountIn) internal pure returns (uint) {
