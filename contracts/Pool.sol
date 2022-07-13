@@ -20,7 +20,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     event Swapped(string swapType, uint spent, uint bought, uint slippage);
     event SlippageInfo(uint slippage, uint thereshold, uint amountIn, uint amountMin);
 
-
     IERC20Metadata internal investToken;
 
     /**
@@ -36,11 +35,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     PoolLPToken lpToken;
     IStrategy strategy;
 
-    address immutable UNISWAPV2_WETH;
- 
-
     PoolLib.SwapInfo[] public swaps;
-    uint public swapCount;
 
 
     constructor(
@@ -58,22 +53,9 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         priceFeed = IPriceFeed(_priceFeedAddress);
         strategy = IStrategy(_strategyAddress);
 
-        UNISWAPV2_WETH = uniswapV2Router.WETH();
         interval = _updateInterval;
         lastTimeStamp = block.timestamp;
     }
-
-
-    //////  PORTFOLIO FUNCTIONS
-
-    // function depositTokenBalance() external view returns(uint256) {
-    //     return depositToken.balanceOf(address(this));
-    // }
-
-
-    // function investTokenBalance() external view returns(uint256) {
-    //     return investToken.balanceOf(address(this));
-    // }
 
 
     // returns the value of the deposit tokens in USD using the latest pricefeed price
@@ -116,14 +98,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         return depositTokens + investedTokenValue();
     }
 
-    //////  PRICEFEED FUNCTIONS
-    // function latestFeedPrice() public view returns(int) {
-    //     return priceFeed.getLatestPrice();
-    // }
-
-    // function latestFeedTimestamp() public view returns(uint) {
-    //     return priceFeed.getLatestTimestamp();
-    // }
 
 
     //////  USER FUNCTIONS
@@ -160,11 +134,10 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     // User deposits 'amount' of depositTokens into the pool
     function deposit(uint amount) public override {
 
-
-        // pool allocation before deposit
+        // portfolio allocation before the deposit
         uint investTokenPerc = portfolioAllocartion();
 
-        // transfer deposit into the pool
+        // transfer deposit amount into the pool
         super.deposit(amount);
 
         uint depositLPTokens;
@@ -200,6 +173,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             swapIfNotExcessiveSlippage(StrategyAction.BUY, address(depositToken), address(investToken), rebalanceAmount, false);
         }
 
+        // mint lp tokens to the user
         lpToken.mint(msg.sender, depositLPTokens);
     }
 
@@ -439,40 +413,29 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             timestamp: block.timestamp,
             side: swapType,
             feedPrice: feedPrice,
-            swapPrice: swapPrice,
+            bought: amountOut,
+            sold: amountIn,
             depositTokenBalance: depositTokenBalanceAfter,
             investTokenBalance: investTokenBalanceAfter
         });
 
         swaps.push(info);
-        swapCount = swaps.length;
     }
 
 
 
     function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _amountOutMin, address _to) internal {
 
-        //next we need to allow the uniswapv2 router to spend the token we just sent to this contract
-        //by calling IERC20 approve you allow the uniswap contract to spend the tokens in this contract
+        // allow the uniswapv2 router to spend the token we just sent to this contract
         IERC20(_tokenIn).approve(address(uniswapV2Router), _amountIn);
 
-        //path is an array of addresses.
-        //this path array will have 3 addresses [tokenIn, WETH, tokenOut]
-        //the if statement below takes into account if token in or token out is WETH.  then the path is only 2 addresses
-        address[] memory path;
-        if (_tokenIn == UNISWAPV2_WETH || _tokenOut == UNISWAPV2_WETH) {
-            path = new address[](2);
-            path[0] = _tokenIn;
-            path[1] = _tokenOut;
-        } else {
-            path = new address[](3);
-            path[0] = _tokenIn;
-            path[1] = UNISWAPV2_WETH;
-            path[2] = _tokenOut;
-        }
-        //then we will call swapExactTokensForTokens
-        //for the deadline we will pass in block.timestamp
-        //the deadline is the latest time the trade is valid for
+        // path is an array of addresses and we assume there is a direct pair btween the in and out tokens
+        address[] memory path = new address[](2);
+        path[0] = _tokenIn;
+        path[1] = _tokenOut;
+
+        // the deadline is the latest time the trade is valid for
+        // for the deadline we will pass in block.timestamp
         uniswapV2Router.swapExactTokensForTokens(
             _amountIn,
             _amountOutMin,
@@ -482,24 +445,11 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         );
     }
 
-    //this function will return the minimum amount from a swap
-    //input the 3 parameters below and it will return the minimum amount out
-    //this is needed for the swap function above
+    // return the minimum amount from a swap
     function getAmountOutMin(address _tokenIn, address _tokenOut, uint256 _amountIn) internal view returns (uint) {
-        //path is an array of addresses.
-        //this path array will have 3 addresses [tokenIn, WETH, tokenOut]
-        //the if statement below takes into account if token in or token out is WETH.  then the path is only 2 addresses
-        address[] memory path;
-        if (_tokenIn == UNISWAPV2_WETH || _tokenOut == UNISWAPV2_WETH) {
-            path = new address[](2);
-            path[0] = _tokenIn;
-            path[1] = _tokenOut;
-        } else {
-            path = new address[](3);
-            path[0] = _tokenIn;
-            path[1] = UNISWAPV2_WETH;
-            path[2] = _tokenOut;
-        }
+        address[] memory path = new address[](2);
+        path[0] = _tokenIn;
+        path[1] = _tokenOut;
 
         uint256[] memory amountOutMins = uniswapV2Router.getAmountsOut(_amountIn, path);
         require(amountOutMins.length >= path.length , "Invalid amountOutMins size");

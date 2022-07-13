@@ -51,7 +51,7 @@ const StrategyInfoView = ( { name, description, targetInvestPercent, rebalancing
 
             <Form.Group as={Row} controlId="deposit-token-address">
               <Form.Label column className="text-start"> Rebalancing Band </Form.Label>
-              <Form.Label column className="text-end"> {rebalancingThreshold} % </Form.Label>
+              <Form.Label column className="text-end"> ± {rebalancingThreshold} % </Form.Label>
             </Form.Group>
 
             <Form.Group as={Row} controlId="invest-token-address">

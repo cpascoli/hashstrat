@@ -7,7 +7,8 @@ library PoolLib {
         uint timestamp;
         string side;
         uint feedPrice;
-        uint swapPrice;
+        uint bought;
+        uint sold;
         uint depositTokenBalance;
         uint investTokenBalance;
     }

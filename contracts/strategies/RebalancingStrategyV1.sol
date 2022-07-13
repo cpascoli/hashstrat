@@ -52,7 +52,7 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
     }
 
     function description() public override pure returns(string memory) {
-        return "A simple rebalancing strategy to rebalance a 2 token portfolio";
+        return "A simple rebalancing strategy for a 2 token portfolio";
     }
 
     function setTargetInvestPerc(uint _targetInvestPerc) public onlyOwner {
