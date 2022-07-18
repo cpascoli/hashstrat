@@ -20,24 +20,19 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     event Swapped(string swapType, uint spent, uint bought, uint slippage);
     event SlippageInfo(uint slippage, uint thereshold, uint amountIn, uint amountMin);
 
-    IERC20Metadata internal investToken;
-
-    /**
-    * Use an interval in seconds and a timestamp to slow execution of Upkeep
-    */
     uint public slippageThereshold = 500; // allow for 5% slippage on swaps (aka should receive at least 95% of the expected token amount)
-    uint public immutable interval; // Upkeep interval
-    uint public lastTimeStamp;      // last Upkeep timestamp
-    uint public performUpkeepCounter;
-
-    IUniswapV2Router uniswapV2Router;
-    IPriceFeed priceFeed;
-    PoolLPToken lpToken;
-    IStrategy strategy;
+    uint public immutable upkeepUpdateInterval;
+    uint public lastUpkeepTimeStamp;
 
     PoolLib.SwapInfo[] public swaps;
 
-
+    address public immutable uniswapV2RouterAddress;
+    address public immutable priceFeedAddress;
+    address public immutable lpTokenAddress;
+    address public immutable depositTokenAddress;
+    address public immutable investTokenAddress;
+    address public strategyAddress;
+ 
     constructor(
         address _uniswapV2RouterAddress, 
         address _priceFeedAddress, 
@@ -47,19 +42,19 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         address _strategyAddress,
         uint _updateInterval) Wallet(_depositTokenAddress) {
 
-        investToken = IERC20Metadata(_investTokenAddress);
-        uniswapV2Router = IUniswapV2Router(_uniswapV2RouterAddress);
-        lpToken = PoolLPToken(_lpTokenAddress);
-        priceFeed = IPriceFeed(_priceFeedAddress);
-        strategy = IStrategy(_strategyAddress);
+        uniswapV2RouterAddress = _uniswapV2RouterAddress;
+        priceFeedAddress = _priceFeedAddress;
+        strategyAddress = _strategyAddress;
+        lpTokenAddress = _lpTokenAddress;
+        depositTokenAddress = _depositTokenAddress;
+        investTokenAddress = _investTokenAddress;
 
-        interval = _updateInterval;
-        lastTimeStamp = block.timestamp;
+        upkeepUpdateInterval = _updateInterval;
+        lastUpkeepTimeStamp = block.timestamp;
     }
 
 
     // returns the value of the deposit tokens in USD using the latest pricefeed price
-    //TODO integrate depositToken/USD pricefeed
     function depositTokenValue() public override view returns(uint) {
         return depositToken.balanceOf(address(this));
     }
@@ -67,6 +62,9 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     // returns the value of the invest tokens in USD using the latest pricefeed price
     function investedTokenValue() public override view returns(uint) {
+
+        IERC20Metadata investToken = IERC20Metadata(investTokenAddress);
+        IPriceFeed priceFeed = IPriceFeed(priceFeedAddress);
 
         uint investTokens = investToken.balanceOf(address(this));
         int investTokenPrice = priceFeed.getLatestPrice();
@@ -100,10 +98,12 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
 
 
-    //////  USER FUNCTIONS
+    //////  PUBLIC FUNCTIONS  ////// 
 
     // Returns the % of the fund owned by the input _addr using 18 digits precision
     function portfolioPercentage(address _addr) public view returns (uint) {
+        PoolLPToken lpToken = PoolLPToken(lpTokenAddress);
+
         // the % of the portfolio of the user
         if (lpToken.totalSupply() == 0) return 0;
 
@@ -113,13 +113,13 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
 
     function portfolioPercentageDecimals() public view returns (uint8) {
-        return priceFeed.decimals();
+        return IPriceFeed(priceFeedAddress).decimals();
     }
 
 
     function portfolioAllocartion() public view returns (uint)  {
         uint precision = 10 ** uint(portfolioPercentageDecimals());
-        return (lpToken.totalSupply() == 0) ? 0 : precision * investedTokenValue() / totalPortfolioValue(); 
+        return (PoolLPToken(lpTokenAddress).totalSupply() == 0) ? 0 : precision * investedTokenValue() / totalPortfolioValue(); 
     }
 
 
@@ -130,9 +130,11 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     }
 
 
-
     // User deposits 'amount' of depositTokens into the pool
     function deposit(uint amount) public override {
+
+        PoolLPToken lpToken = PoolLPToken(lpTokenAddress);
+        PoolLPToken investToken = PoolLPToken(investTokenAddress);
 
         // portfolio allocation before the deposit
         uint investTokenPerc = portfolioAllocartion();
@@ -147,7 +149,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             depositLPTokens = amount;
             invest(); // run the strategy after the first deposit
         } else {
-
             ///// if already have allocated LP tokens => calculate the additional LP tokens for this deposit
 
             // calculate portfolio % of the deposit (using lpPrecision digits precision)
@@ -188,7 +189,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         uint withdrawPerc = precision * amount / value;
 
         // the LP amount to withdraw
-        uint lpAmount = lpToken.totalSupply() * withdrawPerc / precision;
+        uint lpAmount = PoolLPToken(lpTokenAddress).totalSupply() * withdrawPerc / precision;
 
         withdrawLP(lpAmount);
     }
@@ -196,11 +197,14 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     // Withdraw all LP tokens
     function withdrawAll() public  {
-        withdrawLP(lpToken.balanceOf(msg.sender));
+        withdrawLP(PoolLPToken(lpTokenAddress).balanceOf(msg.sender));
     }
 
     // Withdraw the amount of lp tokens provided
     function withdrawLP(uint amount) public {
+
+        PoolLPToken lpToken = PoolLPToken(lpTokenAddress);
+        PoolLPToken investToken = PoolLPToken(investTokenAddress);
 
         require(amount > 0, "Invalid LP amount");
         require(lpToken.totalSupply() > 0, "No LP tokens minted");
@@ -249,7 +253,9 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     // The returned percentage is returned with 4 digits decimals
     // E.g: For a 5% slippage below the expected amount 500 is returned
     function slippagePercentage(address tokenIn, address tokenOut, uint amountIn) public view returns (uint amountMin, uint slippage) {
-        
+        IPriceFeed priceFeed = IPriceFeed(priceFeedAddress);
+        IERC20Metadata investToken = IERC20Metadata(investTokenAddress);
+
         require(priceFeed.getLatestPrice() > 0, "Invalid price");
 
         uint price = uint(priceFeed.getLatestPrice());
@@ -284,9 +290,8 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
 
     function invest() public {
-
         // evaluate strategy to see if we should BUY or SELL
-        (StrategyAction action, uint amountIn) = strategy.evaluate();
+        (StrategyAction action, uint amountIn) = IStrategy(strategyAddress).evaluate();
 
         if (action == StrategyAction.NONE || amountIn == 0) {
             // No rebalancing needed
@@ -298,47 +303,47 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         address tokenOut;
 
         if (action == StrategyAction.BUY) {
-            tokenIn = address(depositToken);
-            tokenOut = address(investToken);
+            tokenIn = depositTokenAddress;
+            tokenOut = investTokenAddress;
         } else if (action == StrategyAction.SELL) {
-            tokenIn = address(investToken);
-            tokenOut = address(depositToken);
+            tokenIn = investTokenAddress;
+            tokenOut = depositTokenAddress;
         }
 
         swapIfNotExcessiveSlippage(action, tokenIn, tokenOut, amountIn, true);
     }
 
 
-    //////  Setter functions  /////
+    //////  OWNER FUNCTIONS  ////// 
 
     function setSlippageThereshold(uint _slippage) public onlyOwner {
         slippageThereshold = _slippage;
     }
 
     function setStrategy(address _strategyAddress) public onlyOwner {
-        strategy = IStrategy(_strategyAddress);
+        strategyAddress = _strategyAddress;
     }
 
 
-    //////  UPKEEP FUNCTIONALITY
+    //////  UPKEEP FUNCTIONALITY  ////// 
 
     function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory /* performData */) {
-        upkeepNeeded = (block.timestamp - lastTimeStamp) > interval;
+        upkeepNeeded = (block.timestamp - lastUpkeepTimeStamp) > upkeepUpdateInterval;
     }
 
     function performUpkeep(bytes calldata /* performData */) external override {
-        //We highly recommend revalidating the upkeep in the performUpkeep function
-        if ((block.timestamp - lastTimeStamp) > interval ) {
-            lastTimeStamp = block.timestamp;
-            performUpkeepCounter = performUpkeepCounter + 1;
+        if ((block.timestamp - lastUpkeepTimeStamp) > upkeepUpdateInterval ) {
+            lastUpkeepTimeStamp = block.timestamp;
             invest();
         }
     }
 
 
-    ////// TOKEN SWAP FUNCTIONALITY
+    ////// TOKEN SWAP FUNCTIONALITY ////// 
 
     function swapIfNotExcessiveSlippage(StrategyAction action, address _tokenIn, address _tokenOut, uint256 _amountIn, bool log) internal {
+
+        IERC20Metadata investToken = IERC20Metadata(investTokenAddress);
 
         // ensure slippage is not too much (e.g. <= 500 for a 5% slippage)
         (uint amountMin, uint slippage) = slippagePercentage(_tokenIn, _tokenOut, _amountIn);
@@ -381,53 +386,18 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
   
 
     function logSwap(string memory swapType, address tokenIn, address tokenOut, uint amountIn, uint amountOut) internal {
-        
-        require(priceFeed.getLatestPrice() > 0, "Invalid price");
-
-        uint feedPrice = uint(priceFeed.getLatestPrice());
-        uint pricePrecision = 10 ** uint(priceFeed.decimals());
-
-        uint swapPrice;
-
-        // swap USD => ETH
-        if (tokenIn == address(depositToken) && tokenOut == address(investToken)) {
-            uint tokenInDecimals = uint(depositToken.decimals());
-            uint tokenOutDecimals = uint(investToken.decimals());
-            uint amountInAdjusted = PoolLib.adjustAmountDecimals (tokenInDecimals, tokenOutDecimals, amountIn);
-            swapPrice = pricePrecision * amountInAdjusted / amountOut;
-        }
-
-        // swap ETH => USD
-        if (tokenIn == address(investToken) && tokenOut == address(depositToken)) {
-            uint tokenInDecimals = uint(investToken.decimals());
-            uint tokenOutDecimals = uint(depositToken.decimals());
-            uint amountInAdjusted = PoolLib.adjustAmountDecimals (tokenInDecimals, tokenOutDecimals, amountIn);
-            swapPrice = pricePrecision * amountOut / amountInAdjusted;
-        }
-
-        uint256 depositTokenBalanceAfter = depositToken.balanceOf(address(this));
-        uint256 investTokenBalanceAfter = investToken.balanceOf(address(this));
-
-        // Record swap info
-        PoolLib.SwapInfo memory info = PoolLib.SwapInfo({
-            timestamp: block.timestamp,
-            side: swapType,
-            feedPrice: feedPrice,
-            bought: amountOut,
-            sold: amountIn,
-            depositTokenBalance: depositTokenBalanceAfter,
-            investTokenBalance: investTokenBalanceAfter
-        });
+        PoolLib.SwapInfo memory info = PoolLib.swapInfo(
+                swapType, tokenIn, tokenOut, amountIn, amountOut, 
+                depositTokenAddress, investTokenAddress, priceFeedAddress);
 
         swaps.push(info);
     }
 
 
-
     function swap(address _tokenIn, address _tokenOut, uint256 _amountIn, uint256 _amountOutMin, address _to) internal {
 
         // allow the uniswapv2 router to spend the token we just sent to this contract
-        IERC20(_tokenIn).approve(address(uniswapV2Router), _amountIn);
+        IERC20(_tokenIn).approve(uniswapV2RouterAddress, _amountIn);
 
         // path is an array of addresses and we assume there is a direct pair btween the in and out tokens
         address[] memory path = new address[](2);
@@ -436,7 +406,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
         // the deadline is the latest time the trade is valid for
         // for the deadline we will pass in block.timestamp
-        uniswapV2Router.swapExactTokensForTokens(
+        IUniswapV2Router(uniswapV2RouterAddress).swapExactTokensForTokens(
             _amountIn,
             _amountOutMin,
             path,
@@ -451,7 +421,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         path[0] = _tokenIn;
         path[1] = _tokenOut;
 
-        uint256[] memory amountOutMins = uniswapV2Router.getAmountsOut(_amountIn, path);
+        uint256[] memory amountOutMins = IUniswapV2Router(uniswapV2RouterAddress).getAmountsOut(_amountIn, path);
         require(amountOutMins.length >= path.length , "Invalid amountOutMins size");
 
         return amountOutMins[path.length - 1];
