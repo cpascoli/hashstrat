@@ -67,24 +67,24 @@ contract("Pool", accounts => {
 
         const price0 = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
 
-        assert.equal((await pool.swapCount()) , 1 , "1 swap logged")
-        assert.equal( (await pool.swaps(0)).swapPrice.toString() , "200000000000" , "initial price")
+        assert.equal((await pool.getSwapsInfo()).length, 1 , "1 swap logged")
+        assert.equal( (await pool.swaps(0)).feedPrice.toString() , "200000000000" , "initial price")
 
         // deposit additional 100 USDCP 
         await usdcp.approve(pool.address, depositAmount)
         await pool.deposit(depositAmount)
         
-        assert.equal((await pool.swapCount()) , 1 , "still 1 swap logged")
+        assert.equal( (await pool.getSwapsInfo()).length, 1 , "still 1 swap logged")
         assert.equal( (await pool.swaps(0)).side , "BUY" , "first swap is BUY")
-        assert.equal( (await pool.swaps(0)).swapPrice.toString() , "200000000000" , "still initial price")
+        assert.equal( (await pool.swaps(0)).feedPrice.toString() , "200000000000" , "still initial price")
 
         await uniswap.setPrice(4000)
 
         await pool.invest()
 
-        assert.equal((await pool.swapCount()) , 2 , "2 swaps logged")
+        assert.equal((await pool.getSwapsInfo()).length, 2 , "2 swaps logged")
         assert.equal((await pool.swaps(1)).side , "SELL" , "second swap is SELL")
-        assert.equal((await pool.swaps(1)).swapPrice.toString() , "400000000000" , "latest price")
+        assert.equal((await pool.swaps(1)).feedPrice.toString() , "400000000000" , "latest price")
     })
 
 })
