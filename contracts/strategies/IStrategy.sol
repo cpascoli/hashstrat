@@ -3,7 +3,7 @@ pragma solidity 0.8.14;
 
 import "../IPriceFeed.sol";
 
-enum StrategyAction { BUY, SELL, NONE }
+enum StrategyAction { NONE, BUY, SELL }
 
 interface IStrategy {
     function name() external view returns(string memory);
