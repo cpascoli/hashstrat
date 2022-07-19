@@ -77,9 +77,9 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         require(address(pool) != address(0), "poolAddress is 0");
         require(feed.getLatestPrice() >= 0, "Price is negative");
         
-        uint time = feed.getLatestTimestamp();
         // don't use old prices
-        if (block.timestamp > time && (block.timestamp - time) > maxPriceAge) return (StrategyAction.NONE, 0);
+        uint latestPriceTime = feed.getLatestTimestamp();
+        if (block.timestamp > latestPriceTime && (block.timestamp - latestPriceTime) > maxPriceAge) return (StrategyAction.NONE, 0);
 
         uint poolValue = pool.totalPortfolioValue();
         if (poolValue == 0) return (StrategyAction.NONE, 0);
@@ -89,7 +89,6 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         
         uint investTokenValue = pool.investedTokenValue();
         uint investPerc = (100 * investTokenValue / poolValue); // the % of invest tokens in the pool
-
 
         if (investPerc >= targetInvestPerc + rebalancingThreshold) {
             uint price = uint(feed.getLatestPrice());

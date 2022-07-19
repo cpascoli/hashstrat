@@ -88,12 +88,9 @@ contract MeanReversionV1 is IStrategy, Ownable {
         require(address(pool) != address(0), "poolAddress is 0");
         require(feed.getLatestPrice() >= 0, "Price is negative");
         
-        uint time = feed.getLatestTimestamp();
-
         // don't use old prices
-        if (block.timestamp > time && (block.timestamp - time) > maxPriceAge) return (StrategyAction.NONE, 0);
-
-       
+        uint latestPriceTime = feed.getLatestTimestamp();
+        if (block.timestamp > latestPriceTime && (block.timestamp - latestPriceTime) > maxPriceAge) return (StrategyAction.NONE, 0);
 
         // don't eval too often
         if (block.timestamp - lastEvalTime < minEvalInterval) return (StrategyAction.NONE, 0);
@@ -106,11 +103,8 @@ contract MeanReversionV1 is IStrategy, Ownable {
             return (StrategyAction.NONE, 0);
         }
 
+        // handle rebalancing situations when eaither token balance is too low
         uint depositTokensToSell = rebalanceDepositTokensAmount();
-        
-
-
-        // handle rebalancing situations
         if (depositTokensToSell > 0) {
             updateMovingAverage(price);
             return (StrategyAction.BUY, depositTokensToSell);  // BUY invest tokens with deposit tokens
@@ -258,10 +252,7 @@ contract MeanReversionV1 is IStrategy, Ownable {
     function updateMovingAverage(int price) internal {
 
         uint daysSinceLasUpdate =  (block.timestamp - lastEvalTime) / 86400; // the days elapsed since the this.minEvalInterval
-
-
         if (daysSinceLasUpdate == 0) return;
- 
 
         if (daysSinceLasUpdate >= movingAveragePeriod) {
             movingAverage = uint(price);
@@ -269,8 +260,9 @@ contract MeanReversionV1 is IStrategy, Ownable {
         } else  {
             // update the moving average, using its old values for (movingAveragePeriod - daysSinceLasUpdate) days 
             // and the current price for 'daysSinceLasUpdate'
-            movingAverage = ( movingAverage * ( movingAveragePeriod - daysSinceLasUpdate) +
-                            daysSinceLasUpdate * uint(price) ) / movingAveragePeriod;
+            uint oldPricesWeight =  movingAverage * ( movingAveragePeriod - daysSinceLasUpdate);
+            uint newPriceWeight = daysSinceLasUpdate * uint(price);
+            movingAverage = (oldPricesWeight + newPriceWeight ) / movingAveragePeriod;
             
             // remember the time the strategy was evaluated
             lastEvalTime = block.timestamp;
