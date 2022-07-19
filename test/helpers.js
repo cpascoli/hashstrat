@@ -29,11 +29,29 @@ toUsdc = (v) => {
 }
 
 
+const increaseTime = addSeconds => { 
+
+    const packet = {
+      jsonrpc: "2.0",
+      method: "evm_increaseTime",
+      params: [addSeconds],
+      id: new Date().getTime()
+    };
+  
+    return new Promise((resolve, reject) => {
+      web3.currentProvider.send(packet, (err, res) => {
+        if (err !== null) return reject(err);
+        return resolve(res);
+      });
+    });
+}
+
 module.exports = {
     round,
     fromWei,
     fromUsdc,
     toUsdc,
-    toWei
+    toWei,
+    increaseTime
   };
 

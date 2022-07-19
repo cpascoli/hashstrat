@@ -1,5 +1,5 @@
 const truffleAssert = require("truffle-assertions")
-const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
+const { round, toWei, fromWei, fromUsdc, toUsdc, increaseTime } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
@@ -181,5 +181,39 @@ contract("MeanReversionV1", accounts => {
         assert.equal( round(fromWei( await weth.balanceOf(pool.address)).toString(), 6), 0.25 + 0.018657, "Pool should have expected WETH balance")
         assert.equal( round(fromUsdc( await pool.investedTokenValue()).toString() ), 335 + 25, "Pool should have expected WETH Value")
     })
+
+    it("when strategy is called within a day the moving average is not udpated ", async () => {
+  
+        const movngAverageBefore = (await strategy.movingAverage()).toString()
+        const lastEvalTimeBefore = (await strategy.lastEvalTime()).toString()
+        await increaseTime(0.9 * 86400)
+
+        await uniswap.setPrice(4000)
+        await strategy.evaluate()
+
+        const movngAverageAfter = (await strategy.movingAverage()).toString()
+        const lastEvalTimeAfter = (await strategy.lastEvalTime()).toString()
+
+        assert.isTrue(movngAverageAfter == movngAverageBefore, "same moving average")
+        assert.isTrue(lastEvalTimeBefore == lastEvalTimeAfter, "same lastEvalTime value")
+    })
+    
+
+    it("when strategy is called after a day the moving average is udpated ", async () => {
+  
+        const movngAverageBefore = (await strategy.movingAverage()).toString()
+        const lastEvalTimeBefore = (await strategy.lastEvalTime()).toString()
+        await increaseTime(1 * 86400)
+
+        await uniswap.setPrice(4000)
+        await strategy.evaluate()
+
+        const movngAverageAfter = (await strategy.movingAverage()).toString()
+        const lastEvalTimeAfter = (await strategy.lastEvalTime()).toString()
+
+        assert.isTrue(movngAverageAfter > movngAverageBefore, "moving average updated")
+        assert.isTrue(lastEvalTimeAfter - lastEvalTimeBefore >= 86400, "updated lastEvalTime value")
+    })
+    
 
 })

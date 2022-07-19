@@ -93,14 +93,22 @@ contract MeanReversionV1 is IStrategy, Ownable {
         // don't use old prices
         if (block.timestamp > time && (block.timestamp - time) > maxPriceAge) return (StrategyAction.NONE, 0);
 
+       
+
         // don't eval too often
         if (block.timestamp - lastEvalTime < minEvalInterval) return (StrategyAction.NONE, 0);
 
+        int price = feed.getLatestPrice();
+
         uint poolValue = pool.totalPortfolioValue();
-        if (poolValue == 0) return (StrategyAction.NONE, 0);
+        if (poolValue == 0) {
+            updateMovingAverage(price);
+            return (StrategyAction.NONE, 0);
+        }
 
         uint depositTokensToSell = rebalanceDepositTokensAmount();
-        int price = feed.getLatestPrice();
+        
+
 
         // handle rebalancing situations
         if (depositTokensToSell > 0) {
@@ -250,7 +258,10 @@ contract MeanReversionV1 is IStrategy, Ownable {
     function updateMovingAverage(int price) internal {
 
         uint daysSinceLasUpdate =  (block.timestamp - lastEvalTime) / 86400; // the days elapsed since the this.minEvalInterval
+
+
         if (daysSinceLasUpdate == 0) return;
+ 
 
         if (daysSinceLasUpdate >= movingAveragePeriod) {
             movingAverage = uint(price);
