@@ -11,7 +11,7 @@ const PriceConsumerV3 = artifacts.require("PriceConsumerV3")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
-contract("Pool", accounts => {
+contract("Pool - withdraw", accounts => {
 
     const defaultAccount = accounts[0]
     const account1 = accounts[1]
