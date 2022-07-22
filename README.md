@@ -3,11 +3,11 @@
 This repo contains a suite of Solidity smart contracts implementing simple crypto investment funds.
 
 Each crypto-fund is a Pool that can hold a risk asset (e.g WETH or WBTC) and a stable asset (e.g USDC or DAI).
-Users can deposit stable asets into a Pool and let the automated on-chain strategies take care of the rest.
+Users can deposit stable assets into a Pool and let the automated on-chain strategies take care of the rest.
 
-Each Pool comes with a Strategy that trades between the risk and the stable assets held in the Pool.
-Strategies use Chainlink price feeds to assist their trading logic.
-Chainlink keepers are used automate the execution of the Strtegies.
+Each Pool comes with a Strategy that to trade between the risk and the stable assets held in the Pool.
+Strategies use [Chainlink data feeds](https://docs.chain.link/docs/matic-addresses/) to assist their trading logic.
+[Chainlink Keepers](https://docs.chain.link/docs/chainlink-keepers/introduction/) are used automate the execution of the Strtegies.
 
  So far there are 3 strategies:
  - RebalancingV1: Ensures to rebalance the assets in the Pool when their value moves above or below predetermined levels of the overall value of the Pool.
@@ -15,13 +15,17 @@ Chainlink keepers are used automate the execution of the Strtegies.
  - TrendFollowV1: Allocates to the risk asset when its price moves aboce a short term moving average and sells when it moves below.
  
 
-A frontend to interact with these smart contracts in Kovan or Polyon is avaialble here:
+### HashStrat Frontend
+
+A React frontend to interact with the HashStrat smart contracts in available in separate [repo](https://github.com/cpascoli/hashstrat-frontend) and its deployed here:
+
 [https://hashstrat.herokuapp.com/](https://hashstrat.herokuapp.com/)
 
 
 ### Requirements
 
 - NodeJS (v18.0.0)
+
 
 ### Requirements
 
@@ -53,6 +57,7 @@ MNEMONIC="<12 memonic words here>"
 RPC_URL="https://kovan.infura.io/v3/<infura_project_id here>"
 ETHERSCAN_API_KEY="<etherscan api key here"
 ```
+
 
 ### Test
 
