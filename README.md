@@ -15,17 +15,15 @@ Strategies use [Chainlink data feeds](https://docs.chain.link/docs/matic-address
  - TrendFollowV1: Allocates to the risk asset when its price moves aboce a short term moving average and sells when it moves below.
  
 
-### HashStrat Frontend
+# Frontend
 
-A React frontend to interact with the HashStrat smart contracts in available in separate [repo](https://github.com/cpascoli/hashstrat-frontend) and its deployed here:
+A React frontend to interact with the HashStrat smart contracts in available in separate [repo](https://github.com/cpascoli/hashstrat-frontend) and it's deployed here:
 
 [https://hashstrat.herokuapp.com/](https://hashstrat.herokuapp.com/)
 
 
-### Requirements
 
-- NodeJS (v18.0.0)
-
+# Instructions
 
 ### Requirements
 
@@ -59,7 +57,7 @@ ETHERSCAN_API_KEY="<etherscan api key here"
 ```
 
 
-### Test
+### Run Tests
 
 ```bash
 npm run test
