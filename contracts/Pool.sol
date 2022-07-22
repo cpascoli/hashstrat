@@ -75,7 +75,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         uint priceFeedPrecision = 10 ** uint(priceFeed.decimals());
        
         uint value;        
-         // portoflio value is the sum of deposit token value and invest token value in the unit of the deposit token
         if (investTokensDecimals >= depositTokenDecimals) {
             // invest token has more decimals than deposit token, have to divide the invest token value by the difference
             uint decimalsConversionFactor = 10 ** (investTokensDecimals - depositTokenDecimals);

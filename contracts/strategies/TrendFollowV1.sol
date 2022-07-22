@@ -9,15 +9,16 @@ import "./../IPool.sol";
 import "../IPriceFeed.sol";
 
 /**
- * This strategy aims to buy/sell when the price moves far in either directions from a slow moving average of the price.
- * If the price moves above 'targetPricePercUp' percent of the moving average the strategy should sell 'tokensToSwapPerc' percentage of the invest tokens.
- * If the price moves below 'targetPricePercDown' percent of the moving average the strategy should buy 'tokensToSwapPerc' percentage of the invest tokens.
+ * This strategy aims to follow the trend buying the risk asset when the price is above a predefined moving average
+ * and selling into the stable asset when the price is below such moving average.
  * 
- * The strategy also ensures to keep at least "minAllocationPerc' percent of the pool value in both tokens.
- * This is to ensure the strategy doesn't get too greedy investing or disinvesting.
+ * The strategy is configured with the following parameters:
+ * - movingAveragePeriod: the period used to determine the average of the price.
+ * - tokensToSwapPerc: the percentage of the risk/stable assets to BUY/SELL when the trade logic is triggered.
+ * - minAllocationPerc: the minium percentage of the porfolio that should be allocated to both the stable and risk assets at all times.
  */
 
-contract MeanReversionV1 is IStrategy, Ownable {
+contract TrendFollowV1 is IStrategy, Ownable {
 
     uint public maxPriceAge = 6 * 60 * 60; // use prices old 6h max (in Kovan prices are updated every few hours)
 
@@ -27,7 +28,7 @@ contract MeanReversionV1 is IStrategy, Ownable {
     IERC20Metadata public investToken;
 
     uint public immutable minEvalInterval;    // the min time that should pass to update the moving average and eval iterations (in seconds)
-    uint public immutable movingAveragePeriod; // The period of the moving average, for example 350 period
+    uint public immutable movingAveragePeriod; // The period of the moving average, for example 50 period
     uint public movingAverage;      // The current value of the Moving Average. Needs to be initialized at deployment (uses pricefeed.decimals)
     uint public lastEvalTime;       // the last time that the strategy was evaluated
 
@@ -82,15 +83,6 @@ contract MeanReversionV1 is IStrategy, Ownable {
         return "A mean reversion strategy for a 2 token portfolio";
     }
 
-    function test0() public view returns(uint) {
-        // block.timestamp - feed.getLatestTimestamp()
-        return block.timestamp;
-    }
-    function test1() public view returns(uint) {
-        // block.timestamp - feed.getLatestTimestamp()
-        return  feed.getLatestTimestamp();
-    }
-
 
     function evaluate() public override returns(StrategyAction action, uint amountIn) {
 
@@ -140,8 +132,8 @@ contract MeanReversionV1 is IStrategy, Ownable {
         uint targetPricePercUpPercent = targetPricePercUp * percentPrecision / 100;
         uint targetPricePercDownPercent = targetPricePercDown * percentPrecision / 100;
 
-        bool shouldSell = deltaPricePerc > 0 &&
-                          uint(deltaPricePerc) >= targetPricePercUpPercent &&
+        bool shouldSell = deltaPricePerc < 0 &&
+                          deltaPricePerc <= -1 * int(targetPricePercDownPercent) && 
                           investPerc > minAllocationPercent;
 
         if (shouldSell) {
@@ -150,8 +142,8 @@ contract MeanReversionV1 is IStrategy, Ownable {
             amountIn = investToken.balanceOf(address(pool)) * tokensToSwapPerc / 100;
         }
 
-        bool shouldBuy = deltaPricePerc < 0 &&
-                        deltaPricePerc <= -1 * int(targetPricePercDownPercent) &&
+        bool shouldBuy = deltaPricePerc > 0 &&
+                        uint(deltaPricePerc) >= targetPricePercUpPercent && 
                         depositPerc > minAllocationPercent;
 
         if (shouldBuy) {
@@ -165,7 +157,6 @@ contract MeanReversionV1 is IStrategy, Ownable {
 
 
     // Returns the % of invest tokens with percentPrecision precision
-    // Assumes pool.totalPortfolioValue > 0 or returns 0
     function investPercent() public view returns (uint investPerc) {
 
         uint investTokenValue = pool.investedTokenValue();

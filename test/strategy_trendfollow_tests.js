@@ -8,10 +8,10 @@ const Pool = artifacts.require("Pool")
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PriceConsumerV3 = artifacts.require("PriceConsumerV3")
 const PoolLPToken = artifacts.require("PoolLPToken")
-const MeanReversionV1 = artifacts.require("MeanReversionV1");
+const TrendFollowV1 = artifacts.require("TrendFollowV1");
 
 
-contract("MeanReversionV1", accounts => {
+contract("TrendFollowV1", accounts => {
 
     const defaultAccount = accounts[0]
     const account1 = accounts[1]
@@ -37,10 +37,10 @@ contract("MeanReversionV1", accounts => {
         const feedDecimals = (await uniswap.decimals()).toString()
         const initialMeanValue  = (2000 * 10 ** feedDecimals).toString()
 
-        strategy = await MeanReversionV1.new('0x0000000000000000000000000000000000000000', 
+        strategy = await TrendFollowV1.new('0x0000000000000000000000000000000000000000', 
                                              priceFeed.address, usdcp.address, weth.address, 
-                                             350, initialMeanValue, 0,  // movingAveragePeriod, initialMeanValue, minEvalInterval
-                                             20, 66, 33, 5  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
+                                             40, initialMeanValue, 0,  // movingAveragePeriod, initialMeanValue, minEvalInterval
+                                             20, 0, 0, 100  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
                                         )
 
         pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
@@ -103,7 +103,7 @@ contract("MeanReversionV1", accounts => {
     })
 
 
-    it("If price moves up more than 66% from the mean, the strategy should sell", async () => {
+    it("If price moves above the moving average, the strategy should BUY", async () => {
        
         // set eth price
         const price = 2000
@@ -126,26 +126,25 @@ contract("MeanReversionV1", accounts => {
         assert.equal(meanRev0[0].toString(), 0, "Strategy should do nothing")  // NO buy/sell
         assert.equal(meanRev0[1].toString(), 0, "Invalid token amount")
 
-        const priceUp = round(price * (1 + targetPricePercUp))
-        await uniswap.setPrice(priceUp) // new price 3320, up 66% (portfolio up to $1330 (500 USDC + $830 in ETH)
+        await uniswap.setPrice(price + 500) // new price 2500, above the mean
 
         const meanRev1 = await strategy.evaluateTrade()
-        const ethBalance = await weth.balanceOf(pool.address) 
-        const ethToSell = ethBalance * tokensToSwapPerc
+        const usdBalance = await usdcp.balanceOf(pool.address) 
+        const usdToSell = usdBalance * tokensToSwapPerc
 
-        assert.equal(meanRev1[0].toString(), 2, "Strategy should Sell")  // 
-        assert.equal(meanRev1[1].toString(), ethToSell, "Invalid token amount to sell")
+        assert.equal(meanRev1[0].toString(), 1, "Strategy should BUY")  // 
+        assert.equal(meanRev1[1].toString(), usdToSell, "Invalid token amount to sell")
 
-        await pool.invest()  // Sell 0.0125 ETH (5%) - Portfolio: 500 USDC + 0.25 in ETH) => 541.5 USDC 0.2375 ETH
+        await pool.invest()  // Sell 500 USDC (100%) - Portfolio: -500 USDC + 0.2 in ETH) => 0 USDC 0.45 ETH
 
-        assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 + 41.5, "Pool should have expected USDC balance")
-        assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), 0.25 - 0.0125, "Pool should have expected WETH balance")
-        assert.equal( fromUsdc( await pool.investedTokenValue()).toString(), 830 - 41.5, "Pool should have expected WETH Value")
+        assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 0, "Pool should have expected USDC balance")
+        assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), 0.25 + 0.2, "Pool should have expected WETH balance")
+        assert.equal( fromUsdc( await pool.investedTokenValue()).toString(), 1125, "Pool should have expected WETH Value")
     })
 
 
 
-    it("If price moves down more than 33% from the mean, the strategy should buy", async () => {
+    it("If price moves below the moving average, the strategy should SELL", async () => {
        
         // set eth price
         const price = 2000
@@ -166,21 +165,21 @@ contract("MeanReversionV1", accounts => {
         assert.equal(meanRev0[0].toString(), 0, "Strategy should do nothing")  // NO buy/sell
         assert.equal(meanRev0[1].toString(), 0, "Invalid token amount")
 
-        const priceDown = round(price * (1 - targetPricePercDown))
-        await uniswap.setPrice(priceDown)   // new price 1340, down 33% (portfolio down to $835 (500 USDC + $335 in ETH)
+        await uniswap.setPrice(price - 500)  // new price 1500  (portfolio down to $875 (500 USDC + $375 in ETH)
 
         const meanRev1 = await strategy.evaluateTrade()
-        const usdcBalance = await usdcp.balanceOf(pool.address) 
-        const usdcToSell = usdcBalance * tokensToSwapPerc
-        assert.equal(meanRev1[0].toString(), 1, "Strategy should BUY")  // 
-        assert.equal(meanRev1[1].toString(), usdcToSell, "Invalid amount of USDC tokens to SELL")
+        const ethBalance = await weth.balanceOf(pool.address) 
+        const ethToSell = ethBalance * tokensToSwapPerc
+        assert.equal(meanRev1[0].toString(), 2, "Strategy should SELL")  // 
+        assert.equal(meanRev1[1].toString(), ethToSell, "Invalid amount of WETH tokens to SELL")
 
-        await pool.invest()  // Buy 0.018657 ETH with 5% of 500 USDC - Portfolio: 500 USDC + 0.25 in ETH) => 475 USDC + 0.268657 ETH
+        await pool.invest()  // Sell 0.25 ETH (100%) - Portfolio: 500 USDC + 0.25 in ETH) => 875 USDC 0.0 ETH
 
-        assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 - 25, "Pool should have expected USDC balance")
-        assert.equal( round(fromWei( await weth.balanceOf(pool.address)).toString(), 6), 0.25 + 0.018657, "Pool should have expected WETH balance")
-        assert.equal( round(fromUsdc( await pool.investedTokenValue()).toString() ), 335 + 25, "Pool should have expected WETH Value")
+        assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 + 375, "Pool should have expected USDC balance")
+        assert.equal( round(fromWei( await weth.balanceOf(pool.address)).toString(), 6), 0, "Pool should have expected WETH balance")
+        assert.equal( round(fromUsdc( await pool.investedTokenValue()).toString() ), 0, "Pool should have expected WETH Value")
     })
+
 
     it("when strategy is called within a day the moving average is not udpated ", async () => {
   
@@ -211,8 +210,9 @@ contract("MeanReversionV1", accounts => {
         const movngAverageAfter = (await strategy.movingAverage()).toString()
         const lastEvalTimeAfter = (await strategy.lastEvalTime()).toString()
 
-        assert.isTrue(lastEvalTimeAfter - lastEvalTimeBefore >= 86400, "updated lastEvalTime value")
         assert.isTrue(movngAverageAfter > movngAverageBefore, "moving average updated")
+        assert.isTrue(lastEvalTimeAfter - lastEvalTimeBefore >= 86400, "updated lastEvalTime value")
     })
+    
 
 })
