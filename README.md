@@ -1,35 +1,39 @@
-# HashStrat
+# HashStrat - Solidity Contracts
 
-A NextJS app and associated Solidity Smart Contracts implementing a simple crypto investment fund.
+This repo contains a suite of Solidity smart contracts implementing simple crypto investment funds.
 
+Each crypto-fund is a Pool that can hold a risk asset (e.g WETH or WBTC) and a stable asset (e.g USDC or DAI).
+Users can deposit stable asets into a Pool and let the automated on-chain strategies take care of the rest.
 
-This is the functionality implemented so far:
-- Users depoist DAI into the pool and receive PoolLP tokens back that represent their share in the pool.
-- New PoolLP tokens get minted when DAI are deposited into the pool and get burt when DAI are withdrawn from the pool.
-- The Pool can spend some of its DAI to buy WETH on UniswapV2, or can sell some WETH for DAI.
-- The Pool uses a rebalancing strategy to target a 60% / 40% split allocation of WETH and DAI. This means that the value of WETH (in DAI) aims to be about 60% of the overall value of the Pool (in DAI).
-- The strategy waits for the value of WETH in the Pool to go above/below the 60% target by a preset thereshold (e.g 15%) before rebalancing.
-- The Pool uses Chainlink keepers to automate the Pool rebalaning operations.
-- The price of WETH/USD is also provided by a Chainlink feed. This price feed is used to determine the value of the WETH in the fund and to trigger the rebalance process.
+Each Pool comes with a Strategy that trades between the risk and the stable assets held in the Pool.
+Strategies use Chainlink price feeds to assist their trading logic.
+Chainlink keepers are used automate the execution of the Strtegies.
 
-NOTE: Deployment scripts can deploy to Kovan and Poligon (Mainnet).
+ So far there are 3 strategies:
+ - RebalancingV1: Ensures to rebalance the assets in the Pool when their value moves above or below predetermined levels of the overall value of the Pool.
+ - MeanReversionV1: buys when the price of the risk asset is way below a long term moving average and sells when it's way above.
+ - TrendFollowV1: Allocates to the risk asset when its price moves aboce a short term moving average and sells when it moves below.
+ 
 
+A frontend to interact with these smart contracts in Kovan or Polyon is avaialble here:
+[https://hashstrat.herokuapp.com/](https://hashstrat.herokuapp.com/)
 
 
 ### Requirements
 
 - NodeJS (v18.0.0)
 
+### Requirements
 
-### Installation
+1. NodeJS (v18.0.0) 
 
-1. Install truffle
+2. Install truffle
 
 ```bash
 npm install truffle -g
 ```
 
-2. Install dependencies by running:
+3. Install dependencies by running:
 
 ```bash
 npm install
@@ -57,7 +61,7 @@ npm run test
 ```
 
 
-### Deploy
+### Deploy Contracts
 
 Kovan:
 ```bash
@@ -72,7 +76,7 @@ npm run migrate:matic:reset
 ```
 
 
-### Verify contracts
+### Verify Contracts
 
 Kovan:
 ```bash
@@ -105,37 +109,6 @@ npm run portfolio-value:kovan
  
  Execution of the `invest` function on the Pool contract can trigger a rebalance operation (aka a swap between DAI and WETH or viceversa) as demostrated in [this transaction](https://kovan.etherscan.io/tx/0x7cd5b8f334d48121713d6fe11280e164a78fafee0909648dd9254482d8e02a0f).
 
-
-## HowTo use the Pool Contract (Polygon)
-
-TODO
-
-
-## Run Frontend (local)
-
-Note: 
-
-
-
-1. Start a local blockchain with Truffle: (port 9545)
-```
-truffle develop
-```
-
-2. Deploy contracts to local blockchain:
-```
-truffle migrate --network develop
-```
-
-3. Start local webserver
-```
-npm run dev
-```
-
-4. Use The Dapp
-- Access the React frontend at [http://localhost:3000/](http://localhost:3000/)
-- Connect Metamask to the local blockchain at http://127.0.0.1:9545/
-- Import owner Account with private key: `6077412bec90b79698977fa6152d4b62fcc71cef932ec06f469ad6904e7c782c`
 
 
 
