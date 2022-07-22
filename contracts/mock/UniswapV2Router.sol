@@ -5,7 +5,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "./IUniswapV2Router.sol";
+import "../IUniswapV2Router.sol";
 
 
 /**
