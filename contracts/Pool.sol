@@ -21,7 +21,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     event SlippageInfo(uint slippage, uint thereshold, uint amountIn, uint amountMin);
 
     uint public slippageThereshold = 500; // allow for 5% slippage on swaps (aka should receive at least 95% of the expected token amount)
-    uint public immutable upkeepUpdateInterval;
+    uint public upkeepInterval;
     uint public lastUpkeepTimeStamp;
 
     PoolLib.SwapInfo[] public swaps;
@@ -40,7 +40,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         address _investTokenAddress, 
         address _lpTokenAddress,
         address _strategyAddress,
-        uint _updateInterval) Wallet(_depositTokenAddress) {
+        uint _upkeepInterval) Wallet(_depositTokenAddress) {
 
         uniswapV2RouterAddress = _uniswapV2RouterAddress;
         priceFeedAddress = _priceFeedAddress;
@@ -49,7 +49,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         depositTokenAddress = _depositTokenAddress;
         investTokenAddress = _investTokenAddress;
 
-        upkeepUpdateInterval = _updateInterval;
+        upkeepInterval = _upkeepInterval;
         lastUpkeepTimeStamp = block.timestamp;
     }
 
@@ -323,15 +323,19 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         strategyAddress = _strategyAddress;
     }
 
+    function setUpkeepInterval(uint _upkeepInterval) public onlyOwner {
+        upkeepInterval = _upkeepInterval;
+    }
+
 
     //////  UPKEEP FUNCTIONALITY  ////// 
 
     function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory /* performData */) {
-        upkeepNeeded = (block.timestamp - lastUpkeepTimeStamp) > upkeepUpdateInterval;
+        upkeepNeeded = (block.timestamp - lastUpkeepTimeStamp) > upkeepInterval;
     }
 
     function performUpkeep(bytes calldata /* performData */) external override {
-        if ((block.timestamp - lastUpkeepTimeStamp) > upkeepUpdateInterval ) {
+        if ((block.timestamp - lastUpkeepTimeStamp) >= upkeepInterval ) {
             lastUpkeepTimeStamp = block.timestamp;
             invest();
         }
@@ -383,7 +387,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     }
 
   
-
     function logSwap(string memory swapType, address tokenIn, address tokenOut, uint amountIn, uint amountOut) internal {
         PoolLib.SwapInfo memory info = PoolLib.swapInfo(
                 swapType, tokenIn, tokenOut, amountIn, amountOut, 
