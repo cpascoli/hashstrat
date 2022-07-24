@@ -39,7 +39,7 @@ contract("MeanReversionV1", accounts => {
 
         strategy = await MeanReversionV1.new('0x0000000000000000000000000000000000000000', 
                                              priceFeed.address, usdcp.address, weth.address, 
-                                             350, initialMeanValue, 0,  // movingAveragePeriod, initialMeanValue, minEvalInterval
+                                             350, initialMeanValue,  // movingAveragePeriod, initialMeanValue
                                              20, 66, 33, 5  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
                                         )
 

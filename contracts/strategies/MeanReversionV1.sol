@@ -26,7 +26,6 @@ contract MeanReversionV1 is IStrategy, Ownable {
     IERC20Metadata public depositToken;
     IERC20Metadata public investToken;
 
-    uint public immutable minEvalInterval;    // the min time that should pass to update the moving average and eval iterations (in seconds)
     uint public immutable movingAveragePeriod; // The period of the moving average, for example 350 period
     uint public movingAverage;      // The current value of the Moving Average. Needs to be initialized at deployment (uses pricefeed.decimals)
     uint public lastEvalTime;       // the last time that the strategy was evaluated
@@ -49,7 +48,6 @@ contract MeanReversionV1 is IStrategy, Ownable {
 
         uint _movingAveragePeriod,
         uint _initialMeanValue,
-        uint _minEvalInterval,
 
         uint _minAllocationPerc,
         uint _targetPricePercUp,
@@ -64,7 +62,6 @@ contract MeanReversionV1 is IStrategy, Ownable {
 
         movingAveragePeriod = _movingAveragePeriod;
         movingAverage = _initialMeanValue;
-        minEvalInterval = _minEvalInterval;
 
         minAllocationPerc = _minAllocationPerc;
         targetPricePercUp = _targetPricePercUp;
