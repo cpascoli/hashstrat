@@ -39,7 +39,7 @@ contract("TrendFollowV1", accounts => {
 
         strategy = await TrendFollowV1.new('0x0000000000000000000000000000000000000000', 
                                              priceFeed.address, usdcp.address, weth.address, 
-                                             40, initialMeanValue, 0,  // movingAveragePeriod, initialMeanValue, minEvalInterval
+                                             40, initialMeanValue, // movingAveragePeriod, initialMeanValue
                                              20, 0, 0, 100  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
                                         )
 
@@ -62,45 +62,64 @@ contract("TrendFollowV1", accounts => {
     })
 
 
-    it("If pool has 100%/0% allocation, it should rebalance to 80%/20%", async () => {
-        // set eth price
-        const price = 2000
-        await uniswap.setPrice(price)
+    it("If pool has USD allocation below 'minAllocationPerc' and price moves up, it should not sell more USD", async () => {
+       
+        // set moving average below eth price o simulate price going up
+        const feedDecimals = (await uniswap.decimals()).toString()
+        await strategy.setmMovingAverage( (1999 * 10 ** feedDecimals).toString() )
+        await uniswap.setPrice(2000)
 
-        // deposit 200 USDC
-        let depositAmount = toUsdc('200')
-        await usdcp.transfer(pool.address, depositAmount)
+        const minAllocationPerc = (await strategy.minAllocationPerc()) / 100
+        const tokensToSwapPerc = (await strategy.tokensToSwapPerc()) / 100
 
-        const rebalanceAmount = fromUsdc(await strategy.rebalanceDepositTokensAmount())
-        assert.equal(rebalanceAmount, "40", "Ivalid rebalance amount")
+        // allocate to the pool in 20% / 80% ratio
+        await usdcp.transfer(pool.address, toUsdc('200'))
+        await weth.transfer(pool.address, toWei('0.4'))
+        
+        const expectedUsdPerc = 200 / fromUsdc((await pool.totalPortfolioValue()))
+        assert.equal(minAllocationPerc, expectedUsdPerc , "Pool should have the min USDC allocation")
 
-        await pool.invest()  // 200  USDC => 160 USDC + 0.02 ETH
+        // trigger the strategy
+        await pool.invest() 
 
-        assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), '160', "Pool should have expected USDC balance")
-        assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), '0.02', "Pool should have expected WETH balance")
-        assert.equal( fromUsdc( await pool.investedTokenValue()).toString(), '40', "Pool should have expected WETH Value")
+        // verify that no trade occurred
+        let usdcAfter = fromUsdc(await usdcp.balanceOf(pool.address))
+        let wethAfter = fromWei(await weth.balanceOf(pool.address))
+        
+        assert.equal(usdcAfter, '200', "Pool should have expected USDC balance")
+        assert.equal(wethAfter, '0.4', "Pool should have expected WETH balance")
     })
 
 
-    it("If pool has 0%/100% allocation, it should rebalance to 20%/80%", async () => {
-   
-        // set eth price
-        const price = 2000
-        await uniswap.setPrice(price)
+    it("If pool has ETH allocation below 'minAllocationPerc' and price moves down, it should not sell more ETH", async () => {
+       
 
-        // deposit 0.5 WETH  (1000 USDC)
-        let depositAmount = toWei('0.5')
-        await weth.transfer(pool.address, depositAmount)
+        // set moving average aboveeth price o simulate price going down
+        const feedDecimals = (await uniswap.decimals()).toString()
+        await strategy.setmMovingAverage( (2001 * 10 ** feedDecimals).toString() )
+        await uniswap.setPrice(2000)
 
-        const rebalanceAmount = fromWei(await strategy.rebalanceInvestTokensAmount())
-        assert.equal(rebalanceAmount, "0.1", "Ivalid rebalance amount")
+        const minAllocationPerc = (await strategy.minAllocationPerc()) / 100
+        const tokensToSwapPerc = (await strategy.tokensToSwapPerc()) / 100
 
-        await pool.invest()  // 0.5  WETH => 200 USDC + 0.4 ETH
+        // allocate to the pool in 80% / 20% ratio
+        await usdcp.transfer(pool.address, toUsdc('800'))
+        await weth.transfer(pool.address, toWei('0.1'))
+        
+        const expectedEthPerc = fromUsdc((await pool.investedTokenValue())) / fromUsdc((await pool.totalPortfolioValue()))
+        assert.equal(minAllocationPerc, expectedEthPerc , "Pool should have min ETH allocation")
 
-        assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), '200', "Pool should have expected USDC balance")
-        assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), '0.4', "Pool should have expected WETH balance")
-        assert.equal( fromUsdc( await pool.investedTokenValue()).toString(), '800', "Pool should have expected WETH Value")
+        // trigger the strategy
+        await pool.invest() 
+
+        // verify that no trade occurred
+        let usdcAfter = fromUsdc(await usdcp.balanceOf(pool.address))
+        let wethAfter = fromWei(await weth.balanceOf(pool.address))
+        
+        assert.equal(usdcAfter, '800', "Pool should have expected USDC balance")
+        assert.equal(wethAfter, '0.1', "Pool should have expected WETH balance")
     })
+
 
 
     it("If price moves above the moving average, the strategy should BUY", async () => {
@@ -110,30 +129,25 @@ contract("TrendFollowV1", accounts => {
         await uniswap.setPrice(price)
 
         // strategy params
-        const targetPricePercUp = (await strategy.targetPricePercUp()) / 100
         const tokensToSwapPerc = (await strategy.tokensToSwapPerc()) / 100
-
 
         // allocate 500 USDC + 0.25 ETH to the bool (total value 1000 USDC)
         await usdcp.transfer(pool.address,  toUsdc('500'))
         await weth.transfer(pool.address,  toWei('0.25')) 
         
-        assert.equal( await strategy.rebalanceDepositTokensAmount(), 0, "Ivalid rebalance amount")
-        assert.equal( await strategy.rebalanceInvestTokensAmount(), 0, "Ivalid rebalance amount")
-        
-        const meanRev0 = await strategy.evaluateTrade()
+        const tradeInfo0 = await strategy.evaluateTrade()
 
-        assert.equal(meanRev0[0].toString(), 0, "Strategy should do nothing")  // NO buy/sell
-        assert.equal(meanRev0[1].toString(), 0, "Invalid token amount")
+        assert.equal(tradeInfo0[0].toString(), 0, "Strategy should do nothing")  // NO buy/sell
+        assert.equal(tradeInfo0[1].toString(), 0, "Invalid token amount")
 
         await uniswap.setPrice(price + 500) // new price 2500, above the mean
 
-        const meanRev1 = await strategy.evaluateTrade()
+        const tradeInfo1 = await strategy.evaluateTrade()
         const usdBalance = await usdcp.balanceOf(pool.address) 
         const usdToSell = usdBalance * tokensToSwapPerc
 
-        assert.equal(meanRev1[0].toString(), 1, "Strategy should BUY")  // 
-        assert.equal(meanRev1[1].toString(), usdToSell, "Invalid token amount to sell")
+        assert.equal(tradeInfo1[0].toString(), 1, "Strategy should BUY")  // 
+        assert.equal(tradeInfo1[1].toString(), usdToSell, "Invalid token amount to sell")
 
         await pool.invest()  // Sell 500 USDC (100%) - Portfolio: -500 USDC + 0.2 in ETH) => 0 USDC 0.45 ETH
 
@@ -151,27 +165,23 @@ contract("TrendFollowV1", accounts => {
         await uniswap.setPrice(price)
 
         // strategy params
-        const targetPricePercDown = (await strategy.targetPricePercDown()) / 100
         const tokensToSwapPerc = (await strategy.tokensToSwapPerc()) / 100
 
         // allocate 500 USDC + 0.25 ETH to the bool (total value 1000 USDC)
         await usdcp.transfer(pool.address,  toUsdc('500'))
         await weth.transfer(pool.address,  toWei('0.25')) 
 
-        assert.equal( await strategy.rebalanceDepositTokensAmount(), 0, "Ivalid rebalance amount")
-        assert.equal( await strategy.rebalanceInvestTokensAmount(), 0, "Ivalid rebalance amount")
-        
-        const meanRev0 = await strategy.evaluateTrade()
-        assert.equal(meanRev0[0].toString(), 0, "Strategy should do nothing")  // NO buy/sell
-        assert.equal(meanRev0[1].toString(), 0, "Invalid token amount")
+        const tradeInfo0 = await strategy.evaluateTrade()
+        assert.equal(tradeInfo0[0].toString(), 0, "Strategy should do nothing")  // NO buy/sell
+        assert.equal(tradeInfo0[1].toString(), 0, "Invalid token amount")
 
         await uniswap.setPrice(price - 500)  // new price 1500  (portfolio down to $875 (500 USDC + $375 in ETH)
 
-        const meanRev1 = await strategy.evaluateTrade()
+        const tradeInfo1 = await strategy.evaluateTrade()
         const ethBalance = await weth.balanceOf(pool.address) 
         const ethToSell = ethBalance * tokensToSwapPerc
-        assert.equal(meanRev1[0].toString(), 2, "Strategy should SELL")  // 
-        assert.equal(meanRev1[1].toString(), ethToSell, "Invalid amount of WETH tokens to SELL")
+        assert.equal(tradeInfo1[0].toString(), 2, "Strategy should SELL")  // 
+        assert.equal(tradeInfo1[1].toString(), ethToSell, "Invalid amount of WETH tokens to SELL")
 
         await pool.invest()  // Sell 0.25 ETH (100%) - Portfolio: 500 USDC + 0.25 in ETH) => 875 USDC 0.0 ETH
 

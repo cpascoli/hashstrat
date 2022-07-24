@@ -27,7 +27,6 @@ contract TrendFollowV1 is IStrategy, Ownable {
     IERC20Metadata public depositToken;
     IERC20Metadata public investToken;
 
-    uint public immutable minEvalInterval;    // the min time that should pass to update the moving average and eval iterations (in seconds)
     uint public immutable movingAveragePeriod; // The period of the moving average, for example 50 period
     uint public movingAverage;      // The current value of the Moving Average. Needs to be initialized at deployment (uses pricefeed.decimals)
     uint public lastEvalTime;       // the last time that the strategy was evaluated
@@ -50,7 +49,6 @@ contract TrendFollowV1 is IStrategy, Ownable {
 
         uint _movingAveragePeriod,
         uint _initialMeanValue,
-        uint _minEvalInterval,
 
         uint _minAllocationPerc,
         uint _targetPricePercUp,
@@ -65,7 +63,6 @@ contract TrendFollowV1 is IStrategy, Ownable {
 
         movingAveragePeriod = _movingAveragePeriod;
         movingAverage = _initialMeanValue;
-        minEvalInterval = _minEvalInterval;
 
         minAllocationPerc = _minAllocationPerc;
         targetPricePercUp = _targetPricePercUp;
@@ -76,11 +73,11 @@ contract TrendFollowV1 is IStrategy, Ownable {
     }
 
     function name() public override pure returns(string memory) {
-        return "MeanReversionV1";
+        return "TrendFollowV1";
     }
 
     function description() public override pure returns(string memory) {
-        return "A mean reversion strategy for a 2 token portfolio";
+        return "A trend following strategy based on a fast moving average";
     }
 
 
@@ -92,9 +89,8 @@ contract TrendFollowV1 is IStrategy, Ownable {
         // don't use old prices
         if ((block.timestamp - feed.getLatestTimestamp()) > maxPriceAge) return (StrategyAction.NONE, 0);
 
-        // 1. first update the moving average
+        // first update the moving average
         updateMovingAverage(feed.getLatestPrice());
-
 
         // do nothing if the pool is empty
         uint poolValue = pool.totalPortfolioValue();
@@ -102,18 +98,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
             return (StrategyAction.NONE, 0);
         }
 
-        // 2. handle rebalancing situations when eaither token balance is too low
-        uint depositTokensToSell = rebalanceDepositTokensAmount();
-        if (depositTokensToSell > 0) {
-            return (StrategyAction.BUY, depositTokensToSell);
-        }
-
-        uint investTokensToSell = rebalanceInvestTokensAmount();
-        if (investTokensToSell > 0) {
-            return (StrategyAction.SELL, investTokensToSell);
-        }
-        
-        // 3. determine if should make a trade
+        // determine if should make a trade
         (action, amountIn) = evaluateTrade();
     }
 
@@ -133,7 +118,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
         uint targetPricePercDownPercent = targetPricePercDown * percentPrecision / 100;
 
         bool shouldSell = deltaPricePerc < 0 &&
-                          deltaPricePerc <= -1 * int(targetPricePercDownPercent) && 
+                          deltaPricePerc < -1 * int(targetPricePercDownPercent) && 
                           investPerc > minAllocationPercent;
 
         if (shouldSell) {
@@ -143,7 +128,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
         }
 
         bool shouldBuy = deltaPricePerc > 0 &&
-                        uint(deltaPricePerc) >= targetPricePercUpPercent && 
+                        uint(deltaPricePerc) > targetPricePercUpPercent && 
                         depositPerc > minAllocationPercent;
 
         if (shouldBuy) {
@@ -156,9 +141,8 @@ contract TrendFollowV1 is IStrategy, Ownable {
     }
 
 
-    // Returns the % of invest tokens with percentPrecision precision
+    // Returns the % of invest tokens in the pool with percentPrecision precision
     function investPercent() public view returns (uint investPerc) {
-
         uint investTokenValue = pool.investedTokenValue();
         uint poolValue = pool.totalPortfolioValue();
         if (poolValue == 0) return 0;
@@ -166,84 +150,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
         investPerc = (percentPrecision * investTokenValue / poolValue); // the % of invest tokens in the pool
     }
 
-
-    // determine the amount of deposit tokens to SELL to have minAllocationPerc % invest tokens
-    function rebalanceDepositTokensAmount() public view returns (uint) {
-
-            uint investPerc = investPercent(); // with percentPrecision digits
-            uint targetInvestPerc = minAllocationPerc * percentPrecision / 100;
-            uint amountIn = 0;
-
-            if (investPerc < targetInvestPerc) {
-
-                require(percentPrecision >= targetInvestPerc, "percentPrecision < targetInvestPerc");
-
-                // calculate amount of deposit tokens to sell (to BUY invest tokens)
-                uint targetDepositPerc = percentPrecision - targetInvestPerc;  //  1 - invest_token %
-                uint poolValue = pool.totalPortfolioValue();
-                uint targetDepositValue = poolValue * targetDepositPerc / percentPrecision;
-
-                uint depositTokenValue = pool.depositTokenValue();
-                amountIn = (depositTokenValue > targetDepositValue) ? depositTokenValue - targetDepositValue : 0;
-            }
-
-        return amountIn;
-    }
-
-    // determine the amount of invest tokens to SELL to have minAllocationPerc % deposit tokens
-    function rebalanceInvestTokensAmount() public view returns (uint) {
-
-        uint investPerc = investPercent(); // with percentPrecision digits
-        uint depositPerc = percentPrecision - investPerc; //  1 - invest_token %
-
-        uint targetDepositPerc = minAllocationPerc * percentPrecision / 100;
-        uint amountIn = 0;
-
-     
-        if (depositPerc < targetDepositPerc) {
-            // calculate amount of invest tokens to sell (to BUY deposit tokens)
-            uint price = uint(feed.getLatestPrice());
-
-            // need to SELL some investment tokens
-            uint poolValue = pool.totalPortfolioValue();
-            uint investTokenValue = pool.investedTokenValue();
-
-            uint targetInvestPerc = percentPrecision - targetDepositPerc;  //  1 - deposit_token % (e.g. 80%)
-            uint targetInvestTokenValue = poolValue * targetInvestPerc / percentPrecision;
-
-            // ensure we have invest tokens to sell
-            require(investTokenValue >= targetInvestTokenValue, "investTokenValue < targetInvestTokenValue");
-
-
-            uint deltaTokenPrecision = decimalDiffFactor();  // this factor accounts for difference in decimals between the 2 tokens
-            uint pricePrecision = 10 ** uint(feed.decimals());
-            
-            // calcualte amount of investment tokens to SELL
-            if (investToken.decimals() >= depositToken.decimals()) {
-                amountIn = pricePrecision * deltaTokenPrecision * (investTokenValue - targetInvestTokenValue) / price;
-            } else {
-                amountIn = pricePrecision * (investTokenValue - targetInvestTokenValue) / price / deltaTokenPrecision;
-            }
-        }
-
-        return amountIn;
-    }
-
-
-    function decimalDiffFactor() internal view returns (uint) {
-
-        uint depositTokenDecimals = uint(depositToken.decimals());
-        uint investTokensDecimals = uint(investToken.decimals());
    
-        //portoflio value is the sum of deposit token value and invest token value in the unit of the deposit token
-        uint diff = (investTokensDecimals >= depositTokenDecimals) ?
-             10 ** (investTokensDecimals - depositTokenDecimals):
-             10 ** (depositTokenDecimals - investTokensDecimals);
-
-        return diff;
-    }
-
-
     function updateMovingAverage(int price) internal {
 
         uint daysSinceLasUpdate =  (block.timestamp - lastEvalTime) / 86400; // days elapsed since the moving average was updated
@@ -265,7 +172,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
     }
 
 
-    // Only Owner setters
+    ////// Only Owner  //////
     function setMaxPriceAge(uint _maxPriceAge) public onlyOwner {
         maxPriceAge = _maxPriceAge;
     }
