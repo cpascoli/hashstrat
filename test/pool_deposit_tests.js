@@ -99,7 +99,7 @@ contract("Pool - deposit", accounts => {
         let expectedEth1 = 100 * 0.6 / 2000
         assert.equal(fromUsdc(balanceUsdcAfter1), expectedUsdc1, "Pool should have expected USDC balance")
         assert.equal(fromWei(balanceWethAfter1), expectedEth1, "Pool should have expected WETH balance")
-        assert.equal(fromWei(await pool.portfolioAllocartion(), 8), 0.6, "Pool should have expected initial WETH allocation")
+        assert.equal(fromWei(await pool.investTokenPercentage(), 8), 0.6, "Pool should have expected initial WETH allocation")
 
         // second deposit by account2
         await usdcp.approve(pool.address, deposit2, { from: account2 })
@@ -112,21 +112,21 @@ contract("Pool - deposit", accounts => {
         let expectedEth2 = 300 * 0.6 / 2000
         assert.equal(fromUsdc(balanceUsdcAfter2), expectedUsdc2, "Pool should have expected USDC balance")
         assert.equal(fromWei(balanceWethAfter2), expectedEth2, "Pool should have expected WETH balance")
-        assert.equal(fromWei(await pool.portfolioAllocartion(), 8), 0.6, "Pool should have expected allocation")
+        assert.equal(fromWei(await pool.investTokenPercentage(), 8), 0.6, "Pool should have expected allocation")
 
         // price increase
         const newEthhPrice = 3000
         await uniswap.setPrice(newEthhPrice)
 
         const expectedPoolAllocation = round(expectedEth2 * newEthhPrice / ( expectedEth2 * newEthhPrice + expectedUsdc2), 8) // 0.69230769
-        assert.equal(fromWei(await pool.portfolioAllocartion(), 8), expectedPoolAllocation), "Invalid pool allocation after price increase"
+        assert.equal(fromWei(await pool.investTokenPercentage(), 8), expectedPoolAllocation), "Invalid pool allocation after price increase"
 
         // new deposit
         await usdcp.approve(pool.address, deposit3, { from: account2 })
         await pool.deposit(deposit3, { from: account2 })
 
         // same allocation
-        assert.equal(fromWei(await pool.portfolioAllocartion(), 8), expectedPoolAllocation), "Invalid pool allocation after new deposit"
+        assert.equal(fromWei(await pool.investTokenPercentage(), 8), expectedPoolAllocation), "Invalid pool allocation after new deposit"
     })
 
 

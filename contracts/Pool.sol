@@ -20,19 +20,20 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     event Swapped(string swapType, uint spent, uint bought, uint slippage);
     event SlippageInfo(uint slippage, uint thereshold, uint amountIn, uint amountMin);
 
-    uint public slippageThereshold = 500; // allow for 5% slippage on swaps (aka should receive at least 95% of the expected token amount)
+
+    IERC20Metadata public immutable investToken;
+    PoolLPToken public immutable lpToken;
+    IPriceFeed public immutable priceFeed;
+
+    address public immutable uniswapV2RouterAddress;
+    address public strategyAddress;
+
     uint public upkeepInterval;
     uint public lastUpkeepTimeStamp;
 
+    uint public slippageThereshold = 500; // allow for 5% slippage on swaps (aka should receive at least 95% of the expected token amount)
     PoolLib.SwapInfo[] public swaps;
 
-    address public immutable uniswapV2RouterAddress;
-    address public immutable priceFeedAddress;
-    address public immutable lpTokenAddress;
-    address public immutable depositTokenAddress;
-    address public immutable investTokenAddress;
-    address public strategyAddress;
- 
     constructor(
         address _uniswapV2RouterAddress, 
         address _priceFeedAddress, 
@@ -42,12 +43,12 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         address _strategyAddress,
         uint _upkeepInterval) Wallet(_depositTokenAddress) {
 
+        investToken = IERC20Metadata(_investTokenAddress);
+        lpToken = PoolLPToken(_lpTokenAddress);
+        priceFeed = IPriceFeed(_priceFeedAddress);
+
         uniswapV2RouterAddress = _uniswapV2RouterAddress;
-        priceFeedAddress = _priceFeedAddress;
         strategyAddress = _strategyAddress;
-        lpTokenAddress = _lpTokenAddress;
-        depositTokenAddress = _depositTokenAddress;
-        investTokenAddress = _investTokenAddress;
 
         upkeepInterval = _upkeepInterval;
         lastUpkeepTimeStamp = block.timestamp;
@@ -62,9 +63,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     // returns the value of the invest tokens in USD using the latest pricefeed price
     function investedTokenValue() public override view returns(uint) {
-
-        IERC20Metadata investToken = IERC20Metadata(investTokenAddress);
-        IPriceFeed priceFeed = IPriceFeed(priceFeedAddress);
 
         uint investTokens = investToken.balanceOf(address(this));
         int investTokenPrice = priceFeed.getLatestPrice();
@@ -101,8 +99,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     // Returns the % of the fund owned by the input _addr using 18 digits precision
     function portfolioPercentage(address _addr) public view returns (uint) {
-        PoolLPToken lpToken = PoolLPToken(lpTokenAddress);
-
         // the % of the portfolio of the user
         if (lpToken.totalSupply() == 0) return 0;
 
@@ -112,13 +108,14 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
 
     function portfolioPercentageDecimals() public view returns (uint8) {
-        return IPriceFeed(priceFeedAddress).decimals();
+        return priceFeed.decimals();
     }
 
 
-    function portfolioAllocartion() public view returns (uint)  {
+    // percentage of the pool value held in invest tokens 
+    function investTokenPercentage() public view returns (uint)  {
         uint precision = 10 ** uint(portfolioPercentageDecimals());
-        return (PoolLPToken(lpTokenAddress).totalSupply() == 0) ? 0 : precision * investedTokenValue() / totalPortfolioValue(); 
+        return (lpToken.totalSupply() == 0) ? 0 : precision * investedTokenValue() / totalPortfolioValue(); 
     }
 
 
@@ -132,11 +129,8 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     // User deposits 'amount' of depositTokens into the pool
     function deposit(uint amount) public override {
 
-        PoolLPToken lpToken = PoolLPToken(lpTokenAddress);
-        PoolLPToken investToken = PoolLPToken(investTokenAddress);
-
         // portfolio allocation before the deposit
-        uint investTokenPerc = portfolioAllocartion();
+        uint investTokenPerc = investTokenPercentage();
 
         // transfer deposit amount into the pool
         super.deposit(amount);
@@ -188,7 +182,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         uint withdrawPerc = precision * amount / value;
 
         // the LP amount to withdraw
-        uint lpAmount = PoolLPToken(lpTokenAddress).totalSupply() * withdrawPerc / precision;
+        uint lpAmount = lpToken.totalSupply() * withdrawPerc / precision;
 
         withdrawLP(lpAmount);
     }
@@ -196,15 +190,11 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     // Withdraw all LP tokens
     function withdrawAll() public  {
-        withdrawLP(PoolLPToken(lpTokenAddress).balanceOf(msg.sender));
+        withdrawLP(lpToken.balanceOf(msg.sender));
     }
 
     // Withdraw the amount of lp tokens provided
-    function withdrawLP(uint amount) public {
-
-        PoolLPToken lpToken = PoolLPToken(lpTokenAddress);
-        PoolLPToken investToken = PoolLPToken(investTokenAddress);
-
+    function withdrawLP(uint amount) public virtual {
         require(amount > 0, "Invalid LP amount");
         require(lpToken.totalSupply() > 0, "No LP tokens minted");
         require(amount <= lpToken.balanceOf(msg.sender), "LP balance exceeded");
@@ -236,7 +226,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             depositTokensSwapped = depositTokensAfterSwap - depositTokensBeforeSwap;
         }
 
-
         // transfer depositTokens to the user
         uint amountToWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;        
         super.withdraw(amountToWithdraw);
@@ -252,9 +241,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     // The returned percentage is returned with 4 digits decimals
     // E.g: For a 5% slippage below the expected amount 500 is returned
     function slippagePercentage(address tokenIn, address tokenOut, uint amountIn) public view returns (uint amountMin, uint slippage) {
-        IPriceFeed priceFeed = IPriceFeed(priceFeedAddress);
-        IERC20Metadata investToken = IERC20Metadata(investTokenAddress);
-
         require(priceFeed.getLatestPrice() > 0, "Invalid price");
 
         uint price = uint(priceFeed.getLatestPrice());
@@ -302,36 +288,21 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         address tokenOut;
 
         if (action == StrategyAction.BUY) {
-            tokenIn = depositTokenAddress;
-            tokenOut = investTokenAddress;
+            tokenIn = address(depositToken);
+            tokenOut = address(investToken);
         } else if (action == StrategyAction.SELL) {
-            tokenIn = investTokenAddress;
-            tokenOut = depositTokenAddress;
+            tokenIn = address(investToken);
+            tokenOut = address(depositToken);
         }
 
         swapIfNotExcessiveSlippage(action, tokenIn, tokenOut, amountIn, true);
     }
 
 
-    //////  OWNER FUNCTIONS  ////// 
-
-    function setSlippageThereshold(uint _slippage) public onlyOwner {
-        slippageThereshold = _slippage;
-    }
-
-    function setStrategy(address _strategyAddress) public onlyOwner {
-        strategyAddress = _strategyAddress;
-    }
-
-    function setUpkeepInterval(uint _upkeepInterval) public onlyOwner {
-        upkeepInterval = _upkeepInterval;
-    }
-
-
     //////  UPKEEP FUNCTIONALITY  ////// 
 
-    function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory /* performData */) {
-        upkeepNeeded = (block.timestamp - lastUpkeepTimeStamp) > upkeepInterval;
+    function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory performData) {
+       return ((block.timestamp - lastUpkeepTimeStamp) >= upkeepInterval, "");
     }
 
     function performUpkeep(bytes calldata /* performData */) external override {
@@ -345,8 +316,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     ////// TOKEN SWAP FUNCTIONALITY ////// 
 
     function swapIfNotExcessiveSlippage(StrategyAction action, address _tokenIn, address _tokenOut, uint256 _amountIn, bool log) internal {
-
-        IERC20Metadata investToken = IERC20Metadata(investTokenAddress);
 
         // ensure slippage is not too much (e.g. <= 500 for a 5% slippage)
         (uint amountMin, uint slippage) = slippagePercentage(_tokenIn, _tokenOut, _amountIn);
@@ -380,17 +349,18 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             bought = depositTokenBalanceAfter - depositTokenBalanceBefore;
         }
         if (log) { 
-            logSwap(swapType, _tokenIn, _tokenOut, spent, bought);
+            logSwap(swapType, spent, bought);
         }
 
         emit Swapped(swapType, spent, bought, slippage);
     }
 
   
-    function logSwap(string memory swapType, address tokenIn, address tokenOut, uint amountIn, uint amountOut) internal {
+    function logSwap(string memory swapType, uint amountIn, uint amountOut) internal {
         PoolLib.SwapInfo memory info = PoolLib.swapInfo(
-                swapType, tokenIn, tokenOut, amountIn, amountOut, 
-                depositTokenAddress, investTokenAddress, priceFeedAddress);
+                swapType, amountIn, amountOut, 
+                address(depositToken), address(investToken), address(priceFeed)
+            );
 
         swaps.push(info);
     }
@@ -427,6 +397,21 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         require(amountOutMins.length >= path.length , "Invalid amountOutMins size");
 
         return amountOutMins[path.length - 1];
+    }
+
+
+    //////  OWNER FUNCTIONS  ////// 
+
+    function setSlippageThereshold(uint _slippage) public onlyOwner {
+        slippageThereshold = _slippage;
+    }
+
+    function setStrategy(address _strategyAddress) public onlyOwner {
+        strategyAddress = _strategyAddress;
+    }
+
+    function setUpkeepInterval(uint _upkeepInterval) public onlyOwner {
+        upkeepInterval = _upkeepInterval;
     }
 
 }

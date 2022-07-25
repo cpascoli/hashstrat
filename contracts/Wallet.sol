@@ -20,7 +20,7 @@ contract Wallet is Ownable {
     // users that deposited depositToken tokens into their balances
     address[] internal usersArray;
     mapping (address => bool) internal users;
-    IERC20Metadata internal depositToken;
+    IERC20Metadata immutable public depositToken;
 
     constructor(address _depositTokenAddress) {
         depositToken = IERC20Metadata(_depositTokenAddress);

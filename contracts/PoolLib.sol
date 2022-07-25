@@ -25,7 +25,6 @@ library PoolLib {
     }
 
     function swapInfo(string memory swapType,
-        address tokenIn, address tokenOut,
         uint amountIn, uint amountOut,
         address depositTokenAddress, address investTokenAddress, address priceFeedAddress) internal view returns (SwapInfo memory) {
 
