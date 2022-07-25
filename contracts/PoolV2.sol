@@ -1,19 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.14;
 
-import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
 import "./Pool.sol";
-import "./IUniswapV2Router.sol";
-import "./PriceConsumerV3.sol";
-import "./PoolLPToken.sol";
-import "./strategies/IStrategy.sol";
-import "./IPool.sol";
-import "./IPriceFeed.sol";
-
-import { PoolLib } from  "./PoolLib.sol";
-
 
 contract PoolV2 is Pool  {
 
