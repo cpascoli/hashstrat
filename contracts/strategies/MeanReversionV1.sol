@@ -79,17 +79,8 @@ contract MeanReversionV1 is IStrategy, Ownable {
         return "A mean reversion strategy for a 2 token portfolio";
     }
 
-    function test0() public view returns(uint) {
-        // block.timestamp - feed.getLatestTimestamp()
-        return block.timestamp;
-    }
-    function test1() public view returns(uint) {
-        // block.timestamp - feed.getLatestTimestamp()
-        return  feed.getLatestTimestamp();
-    }
 
-
-    function evaluate() public override returns(StrategyAction action, uint amountIn) {
+    function evaluate() public override returns(StrategyAction, uint) {
 
         require(address(pool) != address(0), "poolAddress is 0");
         require(feed.getLatestPrice() >= 0, "Price is negative");
@@ -100,26 +91,29 @@ contract MeanReversionV1 is IStrategy, Ownable {
         // 1. first update the moving average
         updateMovingAverage(feed.getLatestPrice());
 
-
-        // do nothing if the pool is empty
+        // if the pool is empty do nothing
         uint poolValue = pool.totalPortfolioValue();
         if (poolValue == 0) {
             return (StrategyAction.NONE, 0);
         }
 
-        // 2. handle rebalancing situations when eaither token balance is too low
+        // 2. mean reversion trade
+        (StrategyAction action, uint amountIn) = evaluateTrade();
+
+        // 3. handle rebalancing situations when either token balance is too low
         uint depositTokensToSell = rebalanceDepositTokensAmount();
         if (depositTokensToSell > 0) {
-            return (StrategyAction.BUY, depositTokensToSell);
+            uint maxAmount = (action == StrategyAction.BUY) && (amountIn > depositTokensToSell) ? amountIn : depositTokensToSell;
+            return (StrategyAction.BUY, maxAmount);
         }
 
         uint investTokensToSell = rebalanceInvestTokensAmount();
         if (investTokensToSell > 0) {
-            return (StrategyAction.SELL, investTokensToSell);
+            uint maxAmount = (action == StrategyAction.SELL) && (amountIn > investTokensToSell) ? amountIn : investTokensToSell;
+            return (StrategyAction.SELL, maxAmount);
         }
         
-        // 3. determine if should make a trade
-        (action, amountIn) = evaluateTrade();
+        return (action, amountIn);
     }
 
 
@@ -177,20 +171,19 @@ contract MeanReversionV1 is IStrategy, Ownable {
     function rebalanceDepositTokensAmount() public view returns (uint) {
 
             uint investPerc = investPercent(); // with percentPrecision digits
-            uint targetInvestPerc = minAllocationPerc * percentPrecision / 100;
+            uint minPerc = minAllocationPerc * percentPrecision / 100;
             uint amountIn = 0;
 
-            if (investPerc < targetInvestPerc) {
-
-                require(percentPrecision >= targetInvestPerc, "percentPrecision < targetInvestPerc");
+            if (investPerc < minPerc) {
+                require(percentPrecision >= minPerc, "percentPrecision < minPerc");
 
                 // calculate amount of deposit tokens to sell (to BUY invest tokens)
-                uint targetDepositPerc = percentPrecision - targetInvestPerc;  //  1 - invest_token %
+                uint maxPerc = percentPrecision - minPerc;  //  1 - invest_token %
                 uint poolValue = pool.totalPortfolioValue();
-                uint targetDepositValue = poolValue * targetDepositPerc / percentPrecision;
+                uint maxDepositValue = poolValue * maxPerc / percentPrecision;
 
                 uint depositTokenValue = pool.depositTokenValue();
-                amountIn = (depositTokenValue > targetDepositValue) ? depositTokenValue - targetDepositValue : 0;
+                amountIn = (depositTokenValue > maxDepositValue) ? depositTokenValue - maxDepositValue : 0;
             }
 
         return amountIn;
