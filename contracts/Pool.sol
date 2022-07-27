@@ -102,8 +102,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         // the % of the portfolio of the user
         if (lpToken.totalSupply() == 0) return 0;
 
-        uint precision = 10 ** uint(portfolioPercentageDecimals());
-        return precision * lpToken.balanceOf(_addr) / lpToken.totalSupply();
+        return 10 ** uint(portfolioPercentageDecimals()) * lpToken.balanceOf(_addr) / lpToken.totalSupply();
     }
 
 
@@ -114,8 +113,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     // percentage of the pool value held in invest tokens 
     function investTokenPercentage() public view returns (uint)  {
-        uint precision = 10 ** uint(portfolioPercentageDecimals());
-        return (lpToken.totalSupply() == 0) ? 0 : precision * investedTokenValue() / totalPortfolioValue(); 
+        return (lpToken.totalSupply() == 0) ? 0 : 10 ** uint(portfolioPercentageDecimals()) * investedTokenValue() / totalPortfolioValue(); 
     }
 
 
@@ -274,7 +272,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
 
 
-    function invest() public {
+    function invest() internal {
         // evaluate strategy to see if we should BUY or SELL
         (StrategyAction action, uint amountIn) = IStrategy(strategyAddress).evaluate();
 

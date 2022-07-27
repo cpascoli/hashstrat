@@ -5,7 +5,6 @@ import "./Pool.sol";
 
 contract PoolV2 is Pool  {
 
-
     uint8 public immutable feesPercDecimals = 4;
     uint public feesPerc; // using feePercDecimals precision (e.g 100 is 1%)
 
@@ -32,9 +31,7 @@ contract PoolV2 is Pool  {
 
 
     // Withdraw an 'amount' of depositTokens from the pool after peying the fee n the gains
-
     function withdrawLP(uint amount) public override {
-
         uint fees = feesForWithdraw(amount, msg.sender);
         uint netAmount = amount - fees;
 
@@ -50,19 +47,23 @@ contract PoolV2 is Pool  {
 
     // the feeds an account at address 'account' would pay to withdraw 'lpTokensAmount' LP tokens
     function feesForWithdraw(uint lpTokensAmount, address account) public view returns (uint) {
-        uint precision = 10 ** uint(feesPercDecimals);
-        // account has gains if their value withdrawn + their value in the pool > ther deposits
-        bool haasGains =  withdrawals[account] + lpTokensValue(lpToken.balanceOf(account)) > deposits[account];
-        
-        return haasGains ? lpTokensAmount * feesPerc / precision  : 0;
+        uint feesPrecision = 10 ** uint(feesPercDecimals);
+        return lpTokensAmount * gainsPerc(account) * feesPerc / feesPrecision / feesPrecision;
     }
 
+    function gainsPerc(address account) public view returns (uint) {
+        uint feesPrecision = 10 ** uint(feesPercDecimals);
+        uint valueInPool = lpTokensValue(lpToken.balanceOf(account));
 
-    // returns the current value of thegicen amount of lp tokens
-    function lpTokensValue(uint lpAmount) public view returns (uint) {
-        require (lpAmount <= lpToken.totalSupply(), "total supply exceeded");
+        // account has gains if their value withdrawn + their value in the pool > ther deposits
+        bool hasGains =  withdrawals[account] + valueInPool > deposits[account];
 
-        return this.totalPortfolioValue() * lpAmount / lpToken.totalSupply();
+        // return the fees on the gains or 0 if there are no gains
+        return hasGains ? feesPrecision * ( withdrawals[account] + valueInPool - deposits[account] ) / deposits[account] : 0;
+    }
+
+    function lpTokensValue (uint lpTokens) public view returns (uint) {
+        return this.totalPortfolioValue() * lpTokens / lpToken.totalSupply();
     }
 
 

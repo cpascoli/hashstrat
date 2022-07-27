@@ -3,14 +3,14 @@ const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const Pool = artifacts.require("Pool")
+const PoolV2Test = artifacts.require("PoolV2Test")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PriceConsumerV3 = artifacts.require("PriceConsumerV3")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
-contract("Pool - invest", accounts => {
+contract("Pool - invest", (accounts, network) => {
 
     const defaultAccount = accounts[0]
     const account1 = accounts[1]
@@ -34,7 +34,17 @@ contract("Pool - invest", accounts => {
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
         strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', priceFeed.address, usdcp.address, weth.address, 60, 2)
-        pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
+        
+        pool = await PoolV2Test.new(
+            uniswap.address, 
+            priceFeed.address, 
+            usdcp.address, 
+            weth.address, 
+            lptoken.address, 
+            strategy.address, 
+            24 * 60 * 60, 
+            100,
+        )
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -77,7 +87,7 @@ contract("Pool - invest", accounts => {
         await uniswap.setPrice(3000)
 
         // rebalance portfolio to 60%/40%
-        await pool.invest()
+        await pool.investTest()
 
         let balanceUsdcAfter = fromUsdc(await usdcp.balanceOf(pool.address))
         let balanceWethAfter = fromWei(await weth.balanceOf(pool.address))
@@ -107,7 +117,7 @@ contract("Pool - invest", accounts => {
         await usdcp.transfer(pool.address, depositAmount)
 
         // rebalance portfolio to 60%/40%
-        await pool.invest()
+        await pool.investTest()
 
         let balanceUsdc = fromUsdc(await usdcp.balanceOf(pool.address))
         let balanceWeth = fromWei(await weth.balanceOf(pool.address))
@@ -142,7 +152,7 @@ contract("Pool - invest", accounts => {
         await usdcp.transfer(pool.address, depositAmount)
 
         await truffleAssert.reverts(
-            pool.invest({ gas: 1000000 })
+            pool.investTest({ gas: 1000000 })
         )
     })
 
@@ -167,7 +177,7 @@ contract("Pool - invest", accounts => {
         assert.equal(fromUsdc(portfolioAllocation1), 100 , "Invalid first portfolio allocation")
 
         // swap tokens
-        await pool.invest()
+        await pool.investTest()
 
         const portfolioValueAfterInvest = await pool.totalPortfolioValue()
         assert.equal(fromUsdc(portfolioValueAfterInvest), fromUsdc(deposit1), "Portfolio value should still be the same as the initial deposit")
@@ -198,7 +208,7 @@ contract("Pool - invest", accounts => {
         assert.equal(round(portfolioPercentage2), 66.67)
 
         // swap tokens
-        await pool.invest()
+        await pool.investTest()
 
         // portfolio % for the 2 accounts should still be 33.33% 66.66%
         const portfolioPercentage1after = await pool.portfolioPercentage(account1) * 100 / precision
