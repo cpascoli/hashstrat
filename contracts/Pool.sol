@@ -18,15 +18,13 @@ import { PoolLib } from  "./PoolLib.sol";
 contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     event Swapped(string swapType, uint spent, uint bought, uint slippage);
-    event SlippageInfo(uint slippage, uint thereshold, uint amountIn, uint amountMin);
-
 
     IERC20Metadata public immutable investToken;
     PoolLPToken public immutable lpToken;
     IPriceFeed public immutable priceFeed;
 
     address public immutable uniswapV2RouterAddress;
-    address public strategyAddress;
+    IStrategy public strategy;
 
     uint public upkeepInterval;
     uint public lastUpkeepTimeStamp;
@@ -46,9 +44,9 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         investToken = IERC20Metadata(_investTokenAddress);
         lpToken = PoolLPToken(_lpTokenAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
-
+        strategy = IStrategy(_strategyAddress);
         uniswapV2RouterAddress = _uniswapV2RouterAddress;
-        strategyAddress = _strategyAddress;
+
 
         upkeepInterval = _upkeepInterval;
         lastUpkeepTimeStamp = block.timestamp;
@@ -274,7 +272,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     function invest() internal {
         // evaluate strategy to see if we should BUY or SELL
-        (StrategyAction action, uint amountIn) = IStrategy(strategyAddress).evaluate();
+        (StrategyAction action, uint amountIn) = strategy.evaluate();
 
         if (action == StrategyAction.NONE || amountIn == 0) {
             // No rebalancing needed
@@ -317,7 +315,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
         // ensure slippage is not too much (e.g. <= 500 for a 5% slippage)
         (uint amountMin, uint slippage) = slippagePercentage(_tokenIn, _tokenOut, _amountIn);
-        emit SlippageInfo(slippage, slippageThereshold, _amountIn, amountMin);
 
         if (slippage > slippageThereshold) {
             revert("Slippage thereshold exceeded");
@@ -392,7 +389,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         path[1] = _tokenOut;
 
         uint256[] memory amountOutMins = IUniswapV2Router(uniswapV2RouterAddress).getAmountsOut(_amountIn, path);
-        require(amountOutMins.length >= path.length , "Invalid amountOutMins size");
+        // require(amountOutMins.length >= path.length , "Invalid amountOutMins size");
 
         return amountOutMins[path.length - 1];
     }
@@ -405,7 +402,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     }
 
     function setStrategy(address _strategyAddress) public onlyOwner {
-        strategyAddress = _strategyAddress;
+        strategy = IStrategy(_strategyAddress);
     }
 
     function setUpkeepInterval(uint _upkeepInterval) public onlyOwner {

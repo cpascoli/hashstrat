@@ -66,13 +66,17 @@ contract("PoolV2 - withdraw", accounts => {
         await usdcp.approve(pool.address, deposit, { from: account1 })
         await pool.deposit(deposit, { from: account1 })
 
+        assert.equal(fromUsdc(await pool.lpTokensValue( toUsdc('20') )) , 20, "Invalid inital LP value")
+
         await uniswap.setPrice(4000)
 
         assert.equal(fromUsdc(await pool.lpTokensValue( toUsdc('20') )) , 32, "Invalid LP value")
 
-        const fees = fromUsdc(await pool.feesForWithdraw( toUsdc('20'), account1))
-        const expectedFeeValue = (32 - 20) * feesPerc   // 0.12
-        assert.equal(fees , expectedFeeValue, "Invalid fees")
+        const fees = fromUsdc(await pool.feesForWithdraw( toUsdc('20'), account1)) // 0.075 LP
+        const feesValue = fromUsdc(await pool.lpTokensValue( toUsdc(fees)) )       // 0.12 USDC
+
+        const expectedFeeValue = (32 - 20) * feesPerc
+        assert.equal(feesValue , expectedFeeValue, "Invalid fees")
     })
 
 
@@ -117,10 +121,11 @@ contract("PoolV2 - withdraw", accounts => {
 
         const fees = await lptoken.balanceOf(pool.address)
         assert.equal( fromUsdc(await lptoken.balanceOf(account1)), 40, "Invalid LP tokens left")
-        assert.equal( fromUsdc(await lptoken.balanceOf(pool.address)), 0.12, "Invalid LP tokens in the pool")
+        assert.equal( fromUsdc(await lptoken.balanceOf(pool.address)), 0.075, "Invalid LP tokens in the pool")
 
         const usdBalance = round(fromUsdc(await usdcp.balanceOf(account1)))
-        assert.equal(usdBalance, 971.8 , "Invalid LP tokens left")
+        const expectedUsdBalance = 1000 - 60 + 32 - 0.12
+        assert.equal(usdBalance, expectedUsdBalance, "Invalid LP tokens left")
     })
 
 })

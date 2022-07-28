@@ -45,21 +45,27 @@ contract PoolV2 is Pool  {
     }
 
 
-    // the feeds an account at address 'account' would pay to withdraw 'lpTokensAmount' LP tokens
+    // the fees in LP tokens that an account would pay to withdraw 'lpTokensAmount' LP tokens
+    // this is calcualted as percentage of the outstanding profit that the user is withdrawing
+    // For example:
+    //  given a 1% fees on profits,
+    //  when a user having $1000 in outstaning profits is withdrawing 20% of his LP tokens
+    //  then he will have to pay the LP equivalent of $2.00 in fees
+
     function feesForWithdraw(uint lpTokensAmount, address account) public view returns (uint) {
-        uint feesPrecision = 10 ** uint(feesPercDecimals);
-        return lpTokensAmount * gainsPerc(account) * feesPerc / feesPrecision / feesPrecision;
+        uint feesPrecision = 10 ** (2 * uint(feesPercDecimals));
+        return lpToken.totalSupply() * lpTokensAmount * gainsPerc(account) * feesPerc / totalPortfolioValue() / feesPrecision;
     }
 
     function gainsPerc(address account) public view returns (uint) {
-        uint feesPrecision = 10 ** uint(feesPercDecimals);
+        // uint feesPrecision = 10 ** uint(feesPercDecimals);
         uint valueInPool = lpTokensValue(lpToken.balanceOf(account));
 
         // account has gains if their value withdrawn + their value in the pool > ther deposits
         bool hasGains =  withdrawals[account] + valueInPool > deposits[account];
 
         // return the fees on the gains or 0 if there are no gains
-        return hasGains ? feesPrecision * ( withdrawals[account] + valueInPool - deposits[account] ) / deposits[account] : 0;
+        return hasGains ?  10 ** uint(feesPercDecimals) * ( withdrawals[account] + valueInPool - deposits[account] ) / deposits[account] : 0;
     }
 
     function lpTokensValue (uint lpTokens) public view returns (uint) {
