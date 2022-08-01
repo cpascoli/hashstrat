@@ -3,10 +3,11 @@ pragma solidity ^0.8.14;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "./IStrategy.sol";
 import "./../IPool.sol";
-import "../IPriceFeed.sol";
+
 
 /**
  * This strategy aims to follow the trend buying the risk asset when the price is above a predefined moving average
@@ -23,7 +24,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
     uint public maxPriceAge = 6 * 60 * 60; // use prices old 6h max (in Kovan prices are updated every few hours)
 
     IPool public pool;
-    IPriceFeed public feed;
+    AggregatorV3Interface public feed;
     IERC20Metadata public depositToken;
     IERC20Metadata public investToken;
 
@@ -57,7 +58,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
 
     ) {
         pool = IPool(_poolAddress);
-        feed = IPriceFeed(_feedAddress);
+        feed = AggregatorV3Interface(_feedAddress);
         depositToken = IERC20Metadata(_depositTokenAddress);
         investToken = IERC20Metadata(_investTokenAddress);
 
@@ -83,14 +84,18 @@ contract TrendFollowV1 is IStrategy, Ownable {
 
     function evaluate() public override returns(StrategyAction action, uint amountIn) {
 
+        (  /*uint80 roundID**/, int price, /*uint startedAt*/,
+            uint priceTimestamp, /*uint80 answeredInRound*/
+        ) = feed.latestRoundData();
+
         require(address(pool) != address(0), "poolAddress is 0");
-        require(feed.getLatestPrice() >= 0, "Price is negative");
+        require(price > 0, "Price is not positive");
         
-        // don't use old prices
-        if ((block.timestamp - feed.getLatestTimestamp()) > maxPriceAge) return (StrategyAction.NONE, 0);
+          // don't use old prices
+        if ((block.timestamp - priceTimestamp) > maxPriceAge) return (StrategyAction.NONE, 0);
 
         // first update the moving average
-        updateMovingAverage(feed.getLatestPrice());
+        updateMovingAverage(price);
 
         // do nothing if the pool is empty
         uint poolValue = pool.totalPortfolioValue();
@@ -108,7 +113,11 @@ contract TrendFollowV1 is IStrategy, Ownable {
         action = StrategyAction.NONE;
         uint poolValue = pool.totalPortfolioValue();
 
-        int deltaPrice = feed.getLatestPrice() - int(movingAverage);  // can be negative
+        (  /*uint80 roundID**/, int price, /*uint startedAt*/,
+           /*uint priceTimestamp*/, /*uint80 answeredInRound*/
+        ) = feed.latestRoundData();
+
+        int deltaPrice = price - int(movingAverage);  // can be negative
         int deltaPricePerc = int(percentPrecision) * deltaPrice / int(movingAverage);
 
         uint investPerc = investPercent(); // the % of invest tokens in the pool with percentPrecision

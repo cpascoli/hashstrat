@@ -6,7 +6,6 @@ const WETH = artifacts.require("WETH")
 const Pool = artifacts.require("Pool")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
-const PriceConsumerV3 = artifacts.require("PriceConsumerV3")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const MeanReversionV1 = artifacts.require("MeanReversionV1");
 
@@ -22,7 +21,6 @@ contract("MeanReversionV1", accounts => {
     let uniswap
     let usdcp
     let weth
-    let priceFeed
     let lptoken
     let strategy
 
@@ -32,18 +30,17 @@ contract("MeanReversionV1", accounts => {
         lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 6)
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
-        priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
         
         const feedDecimals = (await uniswap.decimals()).toString()
         const initialMeanValue  = (2000 * 10 ** feedDecimals).toString()
 
         strategy = await MeanReversionV1.new('0x0000000000000000000000000000000000000000', 
-                                             priceFeed.address, usdcp.address, weth.address, 
+                                             uniswap.address, usdcp.address, weth.address, 
                                              350, initialMeanValue,  // movingAveragePeriod, initialMeanValue
                                              20, 66, 33, 5  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
                                         )
 
-        pool = await Pool.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
+        pool = await Pool.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()

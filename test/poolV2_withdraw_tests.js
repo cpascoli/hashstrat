@@ -8,7 +8,6 @@ const WETH = artifacts.require("WETH")
 const PoolV2Test = artifacts.require("PoolV2Test")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
-const PriceConsumerV3 = artifacts.require("PriceConsumerV3")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
@@ -23,7 +22,6 @@ contract("PoolV2 - withdraw", accounts => {
     let uniswap
     let usdcp
     let weth
-    let priceFeed
     let lptoken
     let strategy
     let precision
@@ -34,9 +32,8 @@ contract("PoolV2 - withdraw", accounts => {
         lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 6)
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
-        priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
-        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', priceFeed.address, usdcp.address, weth.address, 60, 2)
-        pool = await PoolV2Test.new(uniswap.address, priceFeed.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
+        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
+        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -108,6 +105,7 @@ contract("PoolV2 - withdraw", accounts => {
         // peform deposit for account1
         let deposit = toUsdc('60')
         await usdcp.approve(pool.address, deposit, { from: account1 })
+
         await pool.deposit(deposit, { from: account1 })
 
         // price increase, no user has gains

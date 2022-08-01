@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.14;
 
-import "../IPriceFeed.sol";
 
 enum StrategyAction { NONE, BUY, SELL }
 

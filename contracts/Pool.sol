@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.14;
 
-import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "./Wallet.sol";
 import "./IUniswapV2Router.sol";
-import "./PriceConsumerV3.sol";
 import "./PoolLPToken.sol";
 import "./strategies/IStrategy.sol";
 import "./IPool.sol";
-import "./IPriceFeed.sol";
 
 import { PoolLib } from  "./PoolLib.sol";
 
@@ -21,7 +20,8 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
     IERC20Metadata public immutable investToken;
     PoolLPToken public immutable lpToken;
-    IPriceFeed public immutable priceFeed;
+
+    AggregatorV3Interface internal priceFeed;
 
     address public immutable uniswapV2RouterAddress;
     IStrategy public strategy;
@@ -43,7 +43,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
 
         investToken = IERC20Metadata(_investTokenAddress);
         lpToken = PoolLPToken(_lpTokenAddress);
-        priceFeed = IPriceFeed(_priceFeedAddress);
+        priceFeed = AggregatorV3Interface(_priceFeedAddress);
         strategy = IStrategy(_strategyAddress);
         uniswapV2RouterAddress = _uniswapV2RouterAddress;
 
@@ -62,10 +62,10 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     // returns the value of the invest tokens in USD using the latest pricefeed price
     function investedTokenValue() public override view returns(uint) {
 
-        uint investTokens = investToken.balanceOf(address(this));
-        int investTokenPrice = priceFeed.getLatestPrice();
-        require (investTokenPrice >= 0, "Invest token price can't be negative");
+        ( /*uint80 roundID**/, int price, /*uint startedAt*/, /*uint timeStamp*/, /*uint80 answeredInRound*/) = priceFeed.latestRoundData();
+        require (price >= 0, "Invest token price can't be negative");
 
+        uint investTokens = investToken.balanceOf(address(this));
         uint depositTokenDecimals = uint(depositToken.decimals());
         uint investTokensDecimals = uint(investToken.decimals());
         uint priceFeedPrecision = 10 ** uint(priceFeed.decimals());
@@ -74,11 +74,11 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         if (investTokensDecimals >= depositTokenDecimals) {
             // invest token has more decimals than deposit token, have to divide the invest token value by the difference
             uint decimalsConversionFactor = 10 ** (investTokensDecimals - depositTokenDecimals);
-            value = investTokens * uint(investTokenPrice) / decimalsConversionFactor / priceFeedPrecision;
+            value = investTokens * uint(price) / decimalsConversionFactor / priceFeedPrecision;
         } else {
             // invest token has less decimals tham deposit token, have to multiply invest token value by the difference
             uint decimalsConversionFactor = 10 ** (depositTokenDecimals - investTokensDecimals);
-            value = investTokens * uint(investTokenPrice) * decimalsConversionFactor / priceFeedPrecision;
+            value = investTokens * uint(price) * decimalsConversionFactor / priceFeedPrecision;
         }
 
         return value;
@@ -125,10 +125,10 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     // User deposits 'amount' of depositTokens into the pool
     function deposit(uint amount) public override {
 
-        // portfolio allocation before the deposit
+        //portfolio allocation before the deposit
         uint investTokenPerc = investTokenPercentage();
 
-        // transfer deposit amount into the pool
+        //transfer deposit amount into the pool
         super.deposit(amount);
 
         uint depositLPTokens = lpTokensForDeposit(amount);
@@ -230,9 +230,10 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     // The returned percentage is returned with 4 digits decimals
     // E.g: For a 5% slippage below the expected amount 500 is returned
     function slippagePercentage(address tokenIn, address tokenOut, uint amountIn) public view returns (uint amountMin, uint slippage) {
-        require(priceFeed.getLatestPrice() > 0, "Invalid price");
+        ( /*uint80 roundID**/, int price, /*uint startedAt*/, /*uint timeStamp*/, /*uint80 answeredInRound*/) = priceFeed.latestRoundData();
 
-        uint price = uint(priceFeed.getLatestPrice());
+        require(price > 0, "Invalid price");
+
         uint pricePrecision = 10 ** uint(priceFeed.decimals());
 
         uint amountExpected;
@@ -242,7 +243,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             uint tokenInDecimals = uint(depositToken.decimals());
             uint tokenOutDecimals = uint(investToken.decimals());
             uint amountInAdjusted = PoolLib.adjustAmountDecimals (tokenInDecimals, tokenOutDecimals, amountIn);
-            amountExpected = amountInAdjusted * pricePrecision / price;
+            amountExpected = amountInAdjusted * pricePrecision / uint(price);
         } 
 
         // swap ETH => USD
@@ -250,7 +251,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             uint tokenInDecimals = uint(investToken.decimals());
             uint tokenOutDecimals = uint(depositToken.decimals());
             uint amountInAdjusted = PoolLib.adjustAmountDecimals (tokenInDecimals, tokenOutDecimals, amountIn);
-            amountExpected = amountInAdjusted * price / pricePrecision;
+            amountExpected = amountInAdjusted * uint(price) / pricePrecision;
         }
 
         amountMin = getAmountOutMin(tokenIn, tokenOut, amountIn);

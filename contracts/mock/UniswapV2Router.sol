@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.14;
+pragma solidity ^0.8.14;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -149,15 +149,15 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
     }
 
 
-    function decimals() external override view  returns (uint8) {
+    function decimals() external override pure  returns (uint8) {
         return 8;
     }
 
-    function description() external override view returns (string memory) {
+    function description() external override pure returns (string memory) {
         return "Mock price feed";
     }
 
-    function version() external override view  returns (uint256) {
+    function version() external override pure  returns (uint256) {
         return 1;
     }
 

@@ -3,10 +3,11 @@ pragma solidity ^0.8.14;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "./IStrategy.sol";
 import "./../IPool.sol";
-import "../IPriceFeed.sol";
+
 
 /**
   A simple rebalancing strategy for a portfolio of 2 tokens.
@@ -26,7 +27,7 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
     uint public rebalancingThreshold; // [0-100] interval
 
     IPool public pool;
-    IPriceFeed public feed;
+    AggregatorV3Interface public feed;
     IERC20Metadata public depositToken;
     IERC20Metadata public investToken;
 
@@ -40,7 +41,7 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         uint _rebalancingThreshold
     ) {
         pool = IPool(_poolAddress);
-        feed = IPriceFeed(_feedAddress);
+        feed = AggregatorV3Interface(_feedAddress);
         depositToken = IERC20Metadata(_depositTokenAddress);
         investToken = IERC20Metadata(_investTokenAddress);
         targetInvestPerc = _targetInvestPerc;
@@ -74,12 +75,15 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
 
     function evaluate() public override returns(StrategyAction, uint) {
 
+        (   /*uint80 roundID**/, int price, /*uint startedAt*/,
+            uint priceTimestamp, /*uint80 answeredInRound*/
+        ) = feed.latestRoundData();
+
         require(address(pool) != address(0), "poolAddress is 0");
-        require(feed.getLatestPrice() >= 0, "Price is negative");
+        require(price > 0, "Price is not positive");
         
         // don't use old prices
-        uint latestPriceTime = feed.getLatestTimestamp();
-        if (block.timestamp > latestPriceTime && (block.timestamp - latestPriceTime) > maxPriceAge) return (StrategyAction.NONE, 0);
+        if ((block.timestamp - priceTimestamp) > maxPriceAge) return (StrategyAction.NONE, 0);
 
         uint poolValue = pool.totalPortfolioValue();
         if (poolValue == 0) return (StrategyAction.NONE, 0);
@@ -91,7 +95,6 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         uint investPerc = (100 * investTokenValue / poolValue); // the % of invest tokens in the pool
 
         if (investPerc >= targetInvestPerc + rebalancingThreshold) {
-            uint price = uint(feed.getLatestPrice());
             uint deltaPerc = investPerc - targetInvestPerc;
            
             require(deltaPerc >= 0 && deltaPerc <= 100, "Invalid deltaPerc SELL side");
@@ -104,9 +107,9 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
             
             // calcualte amount of investment tokens to sell
             if (investToken.decimals() >= depositToken.decimals()) {
-                amountIn = pricePrecision * deltaTokenPrecision * (investTokenValue - targetInvestTokenValue) / price;
+                amountIn = pricePrecision * deltaTokenPrecision * (investTokenValue - targetInvestTokenValue) / uint(price);
             } else {
-                amountIn = pricePrecision * (investTokenValue - targetInvestTokenValue) / price / deltaTokenPrecision;
+                amountIn = pricePrecision * (investTokenValue - targetInvestTokenValue) / uint(price) / deltaTokenPrecision;
             }
         }
         

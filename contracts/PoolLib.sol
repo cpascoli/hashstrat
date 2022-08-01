@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.14;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./IPriceFeed.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 
 library PoolLib {
 
@@ -28,7 +29,11 @@ library PoolLib {
         uint amountIn, uint amountOut,
         address depositTokenAddress, address investTokenAddress, address priceFeedAddress) internal view returns (SwapInfo memory) {
 
-        require(IPriceFeed(priceFeedAddress).getLatestPrice() > 0, "Invalid price");
+        (   /*uint80 roundID**/, int price, /*uint startedAt*/,
+            /*uint timeStamp*/, /*uint80 answeredInRound*/
+        ) = AggregatorV3Interface(priceFeedAddress).latestRoundData();
+
+        require(price > 0, "Invalid price");
 
         IERC20Metadata depositToken = IERC20Metadata(depositTokenAddress);
         IERC20Metadata investToken = IERC20Metadata(investTokenAddress);
@@ -37,7 +42,7 @@ library PoolLib {
         PoolLib.SwapInfo memory info = PoolLib.SwapInfo({
             timestamp: block.timestamp,
             side: swapType,
-            feedPrice: uint(IPriceFeed(priceFeedAddress).getLatestPrice()),
+            feedPrice: uint(price),
             bought: amountOut,
             sold: amountIn,
             depositTokenBalance: depositToken.balanceOf(address(this)),

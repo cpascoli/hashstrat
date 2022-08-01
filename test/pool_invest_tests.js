@@ -6,7 +6,6 @@ const WETH = artifacts.require("WETH")
 const PoolV2Test = artifacts.require("PoolV2Test")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
-const PriceConsumerV3 = artifacts.require("PriceConsumerV3")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
@@ -21,7 +20,6 @@ contract("Pool - invest", (accounts, network) => {
     let uniswap
     let usdcp
     let weth
-    let priceFeed
     let lptoken
     let strategy
     let precision
@@ -32,12 +30,11 @@ contract("Pool - invest", (accounts, network) => {
         lptoken = await PoolLPToken.new("Pool LP", "POOL-LP", 6)
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
-        priceFeed = await PriceConsumerV3.new(uniswap.address)  // UniswapV2Router also provides mock price feed
-        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', priceFeed.address, usdcp.address, weth.address, 60, 2)
+        strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
         
         pool = await PoolV2Test.new(
             uniswap.address, 
-            priceFeed.address, 
+            uniswap.address,  // pricefeed
             usdcp.address, 
             weth.address, 
             lptoken.address, 
