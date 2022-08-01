@@ -67,13 +67,15 @@ contract("PoolV2 - withdraw", accounts => {
 
         await uniswap.setPrice(4000)
 
+        assert.equal((await pool.gainsPerc(account1) / 10000 ).toString(), 0.6, "Invalid gains %")
         assert.equal(fromUsdc(await pool.lpTokensValue( toUsdc('20') )) , 32, "Invalid LP value")
 
-        const fees = fromUsdc(await pool.feesForWithdraw( toUsdc('20'), account1)) // 0.075 LP
-        const feesValue = fromUsdc(await pool.lpTokensValue( toUsdc(fees)) )       // 0.12 USDC
+        const fees = fromUsdc(await pool.feesForWithdraw( toUsdc('20'), account1))
+        assert.equal(fees, 0.12, "Invalid fees")
 
-        const expectedFeeValue = (32 - 20) * feesPerc
-        assert.equal(feesValue , expectedFeeValue, "Invalid fees")
+        const feesValue = fromUsdc(await pool.lpTokensValue( toUsdc(fees)) )  // 0.192 USDC
+        const expectedFeeValue = 0.6 * 32 * feesPerc  // 0.192 USDC (profit %  * value withdrawn * fees perc)
+        assert.equal(feesValue , expectedFeeValue, "Invalid fee value")
     })
 
 
@@ -105,24 +107,20 @@ contract("PoolV2 - withdraw", accounts => {
         // peform deposit for account1
         let deposit = toUsdc('60')
         await usdcp.approve(pool.address, deposit, { from: account1 })
-
         await pool.deposit(deposit, { from: account1 })
 
         // price increase, no user has gains
         await uniswap.setPrice(4000)
 
-        // check withdraw fees when no gains
-        const lpToWithdraw = toUsdc('20')
-    
         // withdraw 20 LP tokens
-        await pool.withdrawLP(lpToWithdraw, { from: account1 })
+        await pool.withdrawLP(toUsdc('20'), { from: account1 })
 
         const fees = await lptoken.balanceOf(pool.address)
         assert.equal( fromUsdc(await lptoken.balanceOf(account1)), 40, "Invalid LP tokens left")
-        assert.equal( fromUsdc(await lptoken.balanceOf(pool.address)), 0.075, "Invalid LP tokens in the pool")
+        assert.equal( fromUsdc(await lptoken.balanceOf(pool.address)), 0.12, "Invalid LP tokens in the pool")
 
-        const usdBalance = round(fromUsdc(await usdcp.balanceOf(account1)))
-        const expectedUsdBalance = 1000 - 60 + 32 - 0.12
+        const usdBalance = round(fromUsdc(await usdcp.balanceOf(account1)), 1)
+        const expectedUsdBalance = round(1000 - 60 + 32 - 0.192, 1)
         assert.equal(usdBalance, expectedUsdBalance, "Invalid LP tokens left")
     })
 
