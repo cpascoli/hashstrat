@@ -191,16 +191,17 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         uint precision = 10 ** uint(portfolioPercentageDecimals());
         uint withdrawPerc = precision * amount / lpToken.totalSupply();
 
-        // burn the user LP
-        lpToken.burn(msg.sender, amount);
-
         // calculate amount of depositTokens & investTokens to withdraw
         uint depositTokensBeforeSwap = depositToken.balanceOf(address(this));
         uint investTokensBeforeSwap = investToken.balanceOf(address(this));
 
         // the amount of deposit and invest tokens to withdraw
-        uint withdrawDepositTokensAmount = depositTokensBeforeSwap * withdrawPerc / precision;
-        uint withdrawInvestTokensTokensAmount = investTokensBeforeSwap * withdrawPerc / precision;
+        bool isWithdrawingAll = (amount == lpToken.totalSupply());
+        uint withdrawDepositTokensAmount = isWithdrawingAll ? depositTokensBeforeSwap : depositTokensBeforeSwap * withdrawPerc / precision;
+        uint withdrawInvestTokensTokensAmount = isWithdrawingAll ? investTokensBeforeSwap : investTokensBeforeSwap * withdrawPerc / precision;
+
+         // burn the user LP
+        lpToken.burn(msg.sender, amount);
 
         uint depositTokensSwapped = 0;
         // check if have to swap some invest tokens back into deposit tokens

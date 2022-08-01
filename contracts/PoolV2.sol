@@ -78,6 +78,7 @@ contract PoolV2 is Pool  {
     }
 
     function withdrawFees(uint amount) public onlyOwner {
-        lpToken.transfer(msg.sender, amount);
+        uint fees = amount == 0 ? lpToken.balanceOf(address(this)) : amount;
+        lpToken.transfer(msg.sender, fees);
     }
 }
