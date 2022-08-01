@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.14;
+pragma solidity ^0.8.14;
 
 import "./Pool.sol";
 
@@ -53,8 +53,7 @@ contract PoolV2 is Pool  {
     //  then he will have to pay the LP equivalent of $2.00 in fees
 
     function feesForWithdraw(uint lpTokensAmount, address account) public view returns (uint) {
-        uint feesPrecision = 10 ** (2 * uint(feesPercDecimals));
-        return lpToken.totalSupply() * lpTokensAmount * gainsPerc(account) * feesPerc / totalPortfolioValue() / feesPrecision;
+        return lpTokensAmount == 0 ? 0 : lpToken.totalSupply() * lpTokensAmount * gainsPerc(account) * feesPerc / totalPortfolioValue() / (10 ** (2 * uint(feesPercDecimals)));
     }
 
     function gainsPerc(address account) public view returns (uint) {
@@ -65,11 +64,11 @@ contract PoolV2 is Pool  {
         bool hasGains =  withdrawals[account] + valueInPool > deposits[account];
 
         // return the fees on the gains or 0 if there are no gains
-        return hasGains ?  10 ** uint(feesPercDecimals) * ( withdrawals[account] + valueInPool - deposits[account] ) / deposits[account] : 0;
+        return hasGains ? 10 ** uint(feesPercDecimals) * ( withdrawals[account] + valueInPool - deposits[account] ) / deposits[account] : 0;
     }
 
     function lpTokensValue (uint lpTokens) public view returns (uint) {
-        return this.totalPortfolioValue() * lpTokens / lpToken.totalSupply();
+        return lpToken.totalSupply() > 0 ? this.totalPortfolioValue() * lpTokens / lpToken.totalSupply() : 0;
     }
 
 

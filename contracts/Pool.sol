@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.14;
+pragma solidity ^0.8.14;
 
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -131,12 +131,28 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         // transfer deposit amount into the pool
         super.deposit(amount);
 
-        uint depositLPTokens;
+        uint depositLPTokens = lpTokensForDeposit(amount);
 
         if (lpToken.totalSupply() == 0) {
+            // run the strategy after the first deposit
+            invest(); 
+        } else {
+            // swap some of the deposit amount into investTokens to keep the pool balanced at current levels
+            uint precision = 10 ** uint(portfolioPercentageDecimals());
+            uint rebalanceAmount = investTokenPerc * amount / precision;
+            swapIfNotExcessiveSlippage(StrategyAction.BUY, address(depositToken), address(investToken), rebalanceAmount, false);
+        }
+
+        // mint lp tokens to the user
+        lpToken.mint(msg.sender, depositLPTokens);
+    }
+
+
+    function lpTokensForDeposit(uint amount) internal view returns (uint) {
+        uint depositLPTokens;
+         if (lpToken.totalSupply() == 0) {
              ///// If first deposit => allocate the inital LP tokens amount to the user
             depositLPTokens = amount;
-            invest(); // run the strategy after the first deposit
         } else {
             ///// if already have allocated LP tokens => calculate the additional LP tokens for this deposit
 
@@ -156,43 +172,20 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             //      T: total LP tokens allocated before this deposit
     
             depositLPTokens = (portFolioPercentage * lpToken.totalSupply()) / ((1 * lpPrecision) - portFolioPercentage);
-            uint precision = 10 ** uint(portfolioPercentageDecimals());
-            uint rebalanceAmount = investTokenPerc * amount / precision;
-
-            // swap some of the deposit amount into investTokens to keep the pool balanced at current levels
-            swapIfNotExcessiveSlippage(StrategyAction.BUY, address(depositToken), address(investToken), rebalanceAmount, false);
         }
 
-        // mint lp tokens to the user
-        lpToken.mint(msg.sender, depositLPTokens);
-    }
-
-
-    // Withdraw an 'amount' of depositTokens from the pool
-    function withdraw(uint amount) public override {
-        uint value = totalPortfolioValue();
-        require (value > 0, "Portfolio value is 0");
-
-        // the % of the whole pool to be withdrawn
-        uint precision = 10 ** uint(portfolioPercentageDecimals());
-        uint withdrawPerc = precision * amount / value;
-
-        // the LP amount to withdraw
-        uint lpAmount = lpToken.totalSupply() * withdrawPerc / precision;
-
-        withdrawLP(lpAmount);
+        return depositLPTokens;
     }
 
 
     // Withdraw all LP tokens
-    function withdrawAll() public  {
+    function withdrawAll() external {
         withdrawLP(lpToken.balanceOf(msg.sender));
     }
 
     // Withdraw the amount of lp tokens provided
     function withdrawLP(uint amount) public virtual {
         require(amount > 0, "Invalid LP amount");
-        require(lpToken.totalSupply() > 0, "No LP tokens minted");
         require(amount <= lpToken.balanceOf(msg.sender), "LP balance exceeded");
 
         uint precision = 10 ** uint(portfolioPercentageDecimals());
@@ -260,8 +253,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
             amountExpected = amountInAdjusted * price / pricePrecision;
         }
 
-        require(amountExpected > 0, "Invalid expected amount received after swap. It should be greater than 0 but it was not.");
-       
         amountMin = getAmountOutMin(tokenIn, tokenOut, amountIn);
         if (amountMin >= amountExpected) return (amountMin, 0);
 
@@ -275,8 +266,6 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         (StrategyAction action, uint amountIn) = strategy.evaluate();
 
         if (action == StrategyAction.NONE || amountIn == 0) {
-            // No rebalancing needed
-            emit Swapped("None", 0, 0, 0);
             return;
         }
 
@@ -353,9 +342,9 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
   
     function logSwap(string memory swapType, uint amountIn, uint amountOut) internal {
         PoolLib.SwapInfo memory info = PoolLib.swapInfo(
-                swapType, amountIn, amountOut, 
-                address(depositToken), address(investToken), address(priceFeed)
-            );
+            swapType, amountIn, amountOut, 
+            address(depositToken), address(investToken), address(priceFeed)
+        );
 
         swaps.push(info);
     }
