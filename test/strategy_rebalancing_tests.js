@@ -3,8 +3,7 @@ const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const Pool = artifacts.require("Pool")
-
+const PoolV2Test = artifacts.require("PoolV2Test")
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
@@ -31,7 +30,7 @@ contract("RebalancingStrategyV1", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
-        pool = await Pool.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
+        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -56,7 +55,7 @@ contract("RebalancingStrategyV1", accounts => {
         let depositAmount = toUsdc('200')
         await usdcp.transfer(pool.address, depositAmount)
 
-        await pool.invest()  // 200  USdC => 80 USDC + 0.06 ETH
+        await pool.investTest()  // 200  USdC => 80 USDC + 0.06 ETH
 
         let usdcAfter = await usdcp.balanceOf(pool.address)
         let wethAfter = await weth.balanceOf(pool.address)
@@ -77,7 +76,7 @@ contract("RebalancingStrategyV1", accounts => {
         await usdcp.transfer(pool.address, toUsdc('80'), { from: defaultAccount })
         await weth.transfer(pool.address, toWei('0.06'), { from: defaultAccount })
 
-        await pool.invest()  
+        await pool.investTest()  
 
         let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
         let balanceWethAfter = await weth.balanceOf(pool.address)
@@ -94,7 +93,7 @@ contract("RebalancingStrategyV1", accounts => {
         await usdcp.transfer(pool.address, toUsdc('80'), { from: defaultAccount })
         await weth.transfer(pool.address, toWei('0.01'), { from: defaultAccount })
 
-        await pool.invest()  
+        await pool.investTest()  
 
         let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
         let balanceWethAfter = await weth.balanceOf(pool.address)
@@ -112,7 +111,7 @@ contract("RebalancingStrategyV1", accounts => {
         await weth.transfer(pool.address, toWei('0.04'), { from: defaultAccount })
 
         await strategy.setRebalancingThreshold(19) // set rebalance threshold below current pool balance
-        await pool.invest()
+        await pool.investTest()
       
         let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
         let balanceWethAfter = await weth.balanceOf(pool.address)
@@ -130,7 +129,7 @@ contract("RebalancingStrategyV1", accounts => {
         await weth.transfer(pool.address, toWei('0.06'), { from: defaultAccount })
 
         await strategy.setRebalancingThreshold(10) 
-        await pool.invest()  
+        await pool.investTest()  
 
         const totalPortfolioValue0 = await pool.totalPortfolioValue() 
         assert.equal((await pool.depositTokenValue()) / totalPortfolioValue0, 0.4, "Invalid usdc %")
@@ -142,7 +141,7 @@ contract("RebalancingStrategyV1", accounts => {
         assert.equal(weth1, toWei('0.06'), "Invalid usdc %")
 
         await uniswap.setPrice(2000 * 1.1) 
-        await pool.invest() 
+        await pool.investTest() 
 
         const usdc2 = await usdcp.balanceOf(pool.address)
         const weth2 = await weth.balanceOf(pool.address)
@@ -150,7 +149,7 @@ contract("RebalancingStrategyV1", accounts => {
         assert.equal(weth2, toWei('0.06'), "Invalid usdc %")
 
         await uniswap.setPrice(2000 * 0.8)
-        await pool.invest() 
+        await pool.investTest() 
 
         const usdc3 = await usdcp.balanceOf(pool.address)
         const weth3 = await weth.balanceOf(pool.address)
@@ -165,7 +164,7 @@ contract("RebalancingStrategyV1", accounts => {
         await weth.transfer(pool.address, toWei('0.06'), { from: defaultAccount })
 
         await strategy.setRebalancingThreshold(2) // 2%
-        await pool.invest()  
+        await pool.investTest()  
 
         const totalPortfolioValue0 = await pool.totalPortfolioValue() 
         assert.equal(totalPortfolioValue0, toUsdc('200'), "Invalid portfolio value")
@@ -178,7 +177,7 @@ contract("RebalancingStrategyV1", accounts => {
         assert.equal(weth1, toWei('0.06'), "Invalid usdc %")
 
         await uniswap.setPrice(2000 * 1.02) 
-        await pool.invest()
+        await pool.investTest()
 
         const usdc2 = await usdcp.balanceOf(pool.address)
         const weth2 = await weth.balanceOf(pool.address)
@@ -186,7 +185,7 @@ contract("RebalancingStrategyV1", accounts => {
         assert.equal(weth2, toWei('0.06'), "Invalid usdc %")
 
         await uniswap.setPrice(2000 * 0.95) // price below 2% target => should rebalance 
-        await pool.invest() 
+        await pool.investTest() 
 
         const usdc3 = await usdcp.balanceOf(pool.address)
         const weth3 = await weth.balanceOf(pool.address)

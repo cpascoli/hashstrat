@@ -3,8 +3,7 @@ const { round, toWei, fromWei, fromUsdc, toUsdc, increaseTime } = require("./hel
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const Pool = artifacts.require("Pool")
-
+const PoolV2Test = artifacts.require("PoolV2Test")
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const MeanReversionV1 = artifacts.require("MeanReversionV1");
@@ -39,9 +38,8 @@ contract("MeanReversionV1", accounts => {
                                              350, initialMeanValue,  // movingAveragePeriod, initialMeanValue
                                              20, 66, 33, 5  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
                                         )
+        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
 
-        pool = await Pool.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
-        
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
         await uniswap.setPool(pool.address) //FIXME this is probably unnecessary
@@ -71,7 +69,7 @@ contract("MeanReversionV1", accounts => {
         const rebalanceAmount = fromUsdc(await strategy.rebalanceDepositTokensAmount())
         assert.equal(rebalanceAmount, "40", "Ivalid rebalance amount")
 
-        await pool.invest()  // 200  USDC => 160 USDC + 0.02 ETH
+        await pool.investTest()  // 200  USDC => 160 USDC + 0.02 ETH
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), '160', "Pool should have expected USDC balance")
         assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), '0.02', "Pool should have expected WETH balance")
@@ -92,7 +90,7 @@ contract("MeanReversionV1", accounts => {
         const rebalanceAmount = fromWei(await strategy.rebalanceInvestTokensAmount())
         assert.equal(rebalanceAmount, "0.1", "Ivalid rebalance amount")
 
-        await pool.invest()  // 0.5  WETH => 200 USDC + 0.4 ETH
+        await pool.investTest()  // 0.5  WETH => 200 USDC + 0.4 ETH
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), '200', "Pool should have expected USDC balance")
         assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), '0.4', "Pool should have expected WETH balance")
@@ -133,7 +131,7 @@ contract("MeanReversionV1", accounts => {
         assert.equal(meanRev1[0].toString(), 2, "Strategy should Sell")  // 
         assert.equal(meanRev1[1].toString(), ethToSell, "Invalid token amount to sell")
 
-        await pool.invest()  // Sell 0.0125 ETH (5%) - Portfolio: 500 USDC + 0.25 in ETH) => 541.5 USDC 0.2375 ETH
+        await pool.investTest() // Sell 0.0125 ETH (5%) - Portfolio: 500 USDC + 0.25 in ETH) => 541.5 USDC 0.2375 ETH
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 + 41.5, "Pool should have expected USDC balance")
         assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), 0.25 - 0.0125, "Pool should have expected WETH balance")
@@ -172,7 +170,7 @@ contract("MeanReversionV1", accounts => {
         assert.equal(meanRev1[0].toString(), 1, "Strategy should BUY")  // 
         assert.equal(meanRev1[1].toString(), usdcToSell, "Invalid amount of USDC tokens to SELL")
 
-        await pool.invest()  // Buy 0.018657 ETH with 5% of 500 USDC - Portfolio: 500 USDC + 0.25 in ETH) => 475 USDC + 0.268657 ETH
+        await pool.investTest()  // Buy 0.018657 ETH with 5% of 500 USDC - Portfolio: 500 USDC + 0.25 in ETH) => 475 USDC + 0.268657 ETH
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 - 25, "Pool should have expected USDC balance")
         assert.equal( round(fromWei( await weth.balanceOf(pool.address)).toString(), 6), 0.25 + 0.018657, "Pool should have expected WETH balance")

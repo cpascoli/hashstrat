@@ -3,13 +3,13 @@ const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const Pool = artifacts.require("Pool")
+const PoolV2Test = artifacts.require("PoolV2Test")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
-contract("Pool - swap log", accounts => {
+contract("PoolV2 - swap log", accounts => {
 
     const defaultAccount = accounts[0]
     const account1 = accounts[1]
@@ -31,7 +31,7 @@ contract("Pool - swap log", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
-        pool = await Pool.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
+        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -62,7 +62,7 @@ contract("Pool - swap log", accounts => {
         await usdcp.approve(pool.address, depositAmount)
         await pool.deposit(depositAmount)
 
-        const price0 = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        const price0 = (await uniswap.getLatestPrice()) / 10**(await uniswap.decimals())
 
         assert.equal((await pool.getSwapsInfo()).length, 1 , "1 swap logged")
         assert.equal( (await pool.swaps(0)).feedPrice.toString() , "200000000000" , "initial price")
@@ -77,7 +77,7 @@ contract("Pool - swap log", accounts => {
 
         await uniswap.setPrice(4000)
 
-        await pool.invest()
+        await pool.investTest()
 
         assert.equal((await pool.getSwapsInfo()).length, 2 , "2 swaps logged")
         assert.equal((await pool.swaps(1)).side , "SELL" , "second swap is SELL")

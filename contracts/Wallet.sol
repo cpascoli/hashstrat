@@ -18,8 +18,8 @@ contract Wallet is Ownable {
     mapping (address => uint) public withdrawals;
 
     // users that deposited depositToken tokens into their balances
-    address[] internal usersArray;
-    mapping (address => bool) internal users;
+    address[] public usersArray;
+    mapping (address => bool) public users;
     IERC20Metadata immutable public depositToken;
 
     constructor(address _depositTokenAddress) {
@@ -30,8 +30,8 @@ contract Wallet is Ownable {
         require(amount > 0, "Deposit amount is 0");
         require(depositToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance to deposit");
 
-        deposits[msg.sender] = deposits[msg.sender] + amount;
-        totalDeposited = totalDeposited + amount;
+        deposits[msg.sender] += amount;
+        totalDeposited += amount;
         // remember addresses that deposited tokens
         if (!users[msg.sender]) {
             users[msg.sender] = true;
@@ -42,12 +42,12 @@ contract Wallet is Ownable {
         emit Deposited(msg.sender, amount);
     }
 
-    function withdraw(uint amount) public virtual {
+    function withdraw(uint amount) internal virtual {
         require(amount > 0, "Withdraw amount is 0");
         require(depositToken.balanceOf(address(this)) >= amount, "Withdrawal amount exceeds balance");
 
-        withdrawals[msg.sender] = withdrawals[msg.sender] + amount;
-        totalWithdrawn = totalWithdrawn + amount;
+        withdrawals[msg.sender] += amount;
+        totalWithdrawn += amount;
 
         depositToken.transfer(msg.sender, amount);
 

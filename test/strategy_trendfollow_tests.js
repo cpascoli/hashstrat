@@ -3,8 +3,7 @@ const { round, toWei, fromWei, fromUsdc, toUsdc, increaseTime } = require("./hel
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const Pool = artifacts.require("Pool")
-
+const PoolV2Test = artifacts.require("PoolV2Test")
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const TrendFollowV1 = artifacts.require("TrendFollowV1");
@@ -39,7 +38,7 @@ contract("TrendFollowV1", accounts => {
                                              20, 0, 0, 100  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
                                         )
 
-        pool = await Pool.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
+        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -76,7 +75,7 @@ contract("TrendFollowV1", accounts => {
         assert.equal(minAllocationPerc, expectedUsdPerc , "Pool should have the min USDC allocation")
 
         // trigger the strategy
-        await pool.invest() 
+        await pool.investTest() 
 
         // verify that no trade occurred
         let usdcAfter = fromUsdc(await usdcp.balanceOf(pool.address))
@@ -106,7 +105,7 @@ contract("TrendFollowV1", accounts => {
         assert.equal(minAllocationPerc, expectedEthPerc , "Pool should have min ETH allocation")
 
         // trigger the strategy
-        await pool.invest() 
+        await pool.investTest() 
 
         // verify that no trade occurred
         let usdcAfter = fromUsdc(await usdcp.balanceOf(pool.address))
@@ -145,7 +144,7 @@ contract("TrendFollowV1", accounts => {
         assert.equal(tradeInfo1[0].toString(), 1, "Strategy should BUY")  // 
         assert.equal(tradeInfo1[1].toString(), usdToSell, "Invalid token amount to sell")
 
-        await pool.invest()  // Sell 500 USDC (100%) - Portfolio: -500 USDC + 0.2 in ETH) => 0 USDC 0.45 ETH
+        await pool.investTest()  // Sell 500 USDC (100%) - Portfolio: -500 USDC + 0.2 in ETH) => 0 USDC 0.45 ETH
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 0, "Pool should have expected USDC balance")
         assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), 0.25 + 0.2, "Pool should have expected WETH balance")
@@ -179,7 +178,7 @@ contract("TrendFollowV1", accounts => {
         assert.equal(tradeInfo1[0].toString(), 2, "Strategy should SELL")  // 
         assert.equal(tradeInfo1[1].toString(), ethToSell, "Invalid amount of WETH tokens to SELL")
 
-        await pool.invest()  // Sell 0.25 ETH (100%) - Portfolio: 500 USDC + 0.25 in ETH) => 875 USDC 0.0 ETH
+        await pool.investTest()  // Sell 0.25 ETH (100%) - Portfolio: 500 USDC + 0.25 in ETH) => 875 USDC 0.0 ETH
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 + 375, "Pool should have expected USDC balance")
         assert.equal( round(fromWei( await weth.balanceOf(pool.address)).toString(), 6), 0, "Pool should have expected WETH balance")

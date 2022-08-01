@@ -4,7 +4,7 @@ const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const Pool = artifacts.require("Pool")
+const PoolTest = artifacts.require("PoolTest")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
@@ -17,7 +17,6 @@ contract("Pool - withdraw", accounts => {
     const account2 = accounts[2]
 
     let pool
-
     let uniswap
     let usdcp
     let weth
@@ -32,7 +31,7 @@ contract("Pool - withdraw", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
-        pool = await Pool.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
+        pool = await PoolTest.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -80,7 +79,7 @@ contract("Pool - withdraw", accounts => {
         
         // Account1 withdraws 20 usd
         let withraw1 = toUsdc('20')
-        await pool.withdraw(withraw1, { from: account1 })
+        await pool.withdrawLP(withraw1, { from: account1 })
 
         assert.equal(fromUsdc((await usdcp.balanceOf(account1))), 960, "Invalid account1 balance after")
         assert.equal(fromUsdc((await usdcp.balanceOf(account2))), 900, "Invalid account2 balance after")
@@ -123,8 +122,8 @@ contract("Pool - withdraw", accounts => {
         assert.equal((await pool.portfolioPercentage(account1)) * 100 / precision, 37.5, "Invalid account1 portfolio % before")
         assert.equal((await pool.portfolioPercentage(account2)) * 100 / precision, 62.5, "Invalid account2 portfolio % before")
 
-        const price1 = await priceFeed.getLatestPrice()
-        await pool.invest()  // invest 96 USDC into eth
+        const price1 = await uniswap.getLatestPrice()
+        await pool.investTest()  // invest 96 USDC into eth
 
         assert.equal(fromUsdc((await pool.portfolioValue(account1))), 60, "Invalid portfolio value for account1 after withdrawal")
         assert.equal(fromUsdc((await pool.portfolioValue(account2))), 100, "Invalid portfolio value for account2 after withdrawal")
@@ -133,7 +132,7 @@ contract("Pool - withdraw", accounts => {
         await uniswap.setPrice(3000) // ETH goes up to $3000
 
         const targetInvestPerc = await strategy.targetInvestPerc.call() / 100
-        const price2 = await priceFeed.getLatestPrice()
+        const price2 = await uniswap.getLatestPrice()
         const portfolioVal = 160 * (1 - targetInvestPerc) + ((160 * targetInvestPerc) / price1 * price2)
         const account1Val = portfolioVal * 60 / 160
         const account2Val = portfolioVal * 100 / 160
@@ -143,16 +142,14 @@ contract("Pool - withdraw", accounts => {
         assert.equal(fromUsdc((await pool.totalPortfolioValue())), portfolioVal, "Invalid total portfolio value for account2 after withdrawal")
 
         // account1 withdraws all 
-        const value1a = await pool.portfolioValue(account1)
-        await pool.withdraw(value1a, { from: account1 })
+        await pool.withdrawAll({ from: account1 })
 
         assert.equal(fromUsdc((await pool.portfolioValue(account1))), 0, "Invalid portfolio value for account1 after withdrawal")
         assert.equal(fromUsdc((await pool.portfolioValue(account2))), account2Val, "Invalid portfolio value for account2 after withdrawal")
         assert.equal(fromUsdc((await pool.totalPortfolioValue())), (portfolioVal - account1Val), "Invalid total portfolio value for account2 after withdrawal")
 
         // account2 withdraws all 
-        const value2a = await pool.portfolioValue(account2) 
-        await pool.withdraw(value2a, { from: account2 })
+        await pool.withdrawAll({ from: account2 })
 
         assert.equal(round(fromUsdc((await pool.portfolioValue(account1))), 10), 0, "Invalid portfolio value for account1 after withdrawal")
         assert.equal(round(fromUsdc((await pool.portfolioValue(account2))), 10), 0, "Invalid portfolio value for account2 after withdrawal")

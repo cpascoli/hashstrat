@@ -72,7 +72,7 @@ contract("Pool - invest", (accounts, network) => {
 
         // calculate expected token balances
         const targetInvestPerc = await strategy.targetInvestPerc.call()
-        const price0 = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        const price0 = (await uniswap.getLatestPrice()) / 10**(await uniswap.decimals())
         const depositTokensExpected0 = fromUsdc(depositAmount) * (100 - targetInvestPerc) / 100
         const investTokensExpected0 = fromUsdc(depositAmount) * targetInvestPerc / 100 / price0
       
@@ -90,7 +90,7 @@ contract("Pool - invest", (accounts, network) => {
         let balanceWethAfter = fromWei(await weth.balanceOf(pool.address))
 
         // calculate expected token balances
-        const price1 = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        const price1 = (await uniswap.getLatestPrice()) / 10**(await uniswap.decimals())
         const portfolioValue = Number(balanceUsdcBefore) + (Number(balanceWethBefore) * price1)
         const depositTokensExpected1 = portfolioValue * (100 - targetInvestPerc) / 100
         const investTokensExpected1 = portfolioValue * targetInvestPerc / 100 / price1
@@ -121,13 +121,13 @@ contract("Pool - invest", (accounts, network) => {
 
         // calculate expected token balances, including 4% slippage
         const targetInvestPerc = await strategy.targetInvestPerc.call()
-        // const price = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        // const price = (await uniswap.getLatestPrice()) / 10**(await uniswap.decimals())
         // const depositTokensExpected = fromUsdc(depositAmount) * (100 - targetInvestPerc) / 100
         // const investTokensExpected = round( (fromUsdc(depositAmount) * targetInvestPerc / 100) / price * 0.96 , 10)
 
 
         // calculate expected token balances
-        const price = (await priceFeed.getLatestPrice()) / 10**(await priceFeed.decimals())
+        const price = (await uniswap.getLatestPrice()) / 10**(await uniswap.decimals())
         const depositTokensExpected = fromUsdc(depositAmount) * (100 - targetInvestPerc) / 100
         const investTokensExpected = fromUsdc(depositAmount) * targetInvestPerc / 100 / price * (1 - slippage) // account for 3% slippage
 

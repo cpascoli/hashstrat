@@ -1,7 +1,7 @@
 const truffleAssert = require("truffle-assertions")
 
 const USDCP = artifacts.require("USDCP")
-const Wallet = artifacts.require("Wallet")
+const WalletTest = artifacts.require("WalletTest")
 
 
 contract("Wallet", accounts => {
@@ -12,7 +12,7 @@ contract("Wallet", accounts => {
 
     beforeEach(async () => {
         usdcp = await USDCP.new(web3.utils.toWei('1000', 'ether'))
-        wallet = await Wallet.new(usdcp.address);
+        wallet = await WalletTest.new(usdcp.address);
     })
 
 
@@ -41,7 +41,7 @@ contract("Wallet", accounts => {
 
         // withdraw
         let withdrawAmount = 30
-        await wallet.withdraw(withdrawAmount)
+        await wallet.withdrawTest(withdrawAmount)
 
         let withdrawals = await wallet.withdrawals(defaultAccount)
         assert.equal(withdrawals, withdrawAmount , "Account shuld have the expected withdrawals balance")
@@ -59,7 +59,7 @@ contract("Wallet", accounts => {
 
         // attempt to withdraw 101
         await truffleAssert.reverts(
-              wallet.withdraw(depositAmount + 1)
+              wallet.withdrawTest(depositAmount + 1)
         )
     })
 

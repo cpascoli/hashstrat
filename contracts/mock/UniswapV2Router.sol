@@ -175,6 +175,9 @@ contract UniswapV2Router is IUniswapV2Router, AggregatorV3Interface {
         return (0, int256(price), 0, 0, 0);
     }
 
+    function getLatestPrice() external view returns (int256) {
+        return int256(price);
+    }
 
     function concat(string memory _x, string memory _y) internal pure returns (string memory) {
         bytes memory _xBytes = bytes(_x);
