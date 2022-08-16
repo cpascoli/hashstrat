@@ -17,9 +17,9 @@ Strategies use [Chainlink data feeds](https://docs.chain.link/docs/matic-address
 
 # Associated Repos 
 
-[Frontend](https://github.com/cpascoli/hashstrat-frontend) - The ReactJS frontend deployed at [https://hashstrat.com/](https://hashstrat.com/)
-[Indexes] (https://github.com/cpascoli/hashstrat-indexes) - Smart contracts for HashStrat Indexes
-[Governance] (https://github.com/cpascoli/hashstrat-governance) - Smart contracts for the HashStrat DAO Token (HST), HST Farming Pool, etc.
+- [Frontend](https://github.com/cpascoli/hashstrat-frontend) - The ReactJS frontend deployed at [https://hashstrat.com/](https://hashstrat.com/)
+- [Indexes](https://github.com/cpascoli/hashstrat-indexes) - Smart contracts for HashStrat Indexes
+- [Governance](https://github.com/cpascoli/hashstrat-governance) - Smart contracts for the HashStrat DAO Token (HST), HST Farming Pool, etc.
 
 
 
