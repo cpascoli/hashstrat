@@ -85,13 +85,13 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
         // don't use old prices
         if ((block.timestamp - priceTimestamp) > maxPriceAge) return (StrategyAction.NONE, 0);
 
-        uint poolValue = pool.totalPortfolioValue();
+        uint poolValue = pool.totalValue();
         if (poolValue == 0) return (StrategyAction.NONE, 0);
 
         StrategyAction action = StrategyAction.NONE;
         uint amountIn;
         
-        uint investTokenValue = pool.investedTokenValue();
+        uint investTokenValue = pool.riskAssetValue();
         uint investPerc = (100 * investTokenValue / poolValue); // the % of invest tokens in the pool
 
         if (investPerc >= targetInvestPerc + rebalancingThreshold) {
@@ -125,7 +125,7 @@ contract RebalancingStrategyV1 is IStrategy, Ownable {
             uint targetDepositPerc = 100 - targetInvestPerc;
             uint targetDepositValue = poolValue * targetDepositPerc / 100;
 
-            uint depositTokenValue = pool.depositTokenValue();
+            uint depositTokenValue = pool.stableAssetValue();
             require(depositTokenValue >= targetDepositValue, "Invalid amount of deposit tokens to sell");
 
             amountIn = depositTokenValue - targetDepositValue;

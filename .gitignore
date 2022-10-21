@@ -11,3 +11,6 @@ client/.next
 client/web3/artifacts
 client/out
 deploy.sh
+
+migrations
+.vscode

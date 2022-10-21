@@ -3,7 +3,7 @@ const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const PoolV2Test = artifacts.require("PoolV2Test")
+const PoolV3Test = artifacts.require("PoolV3Test")
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
@@ -30,7 +30,7 @@ contract("RebalancingStrategyV1", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
-        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
+        pool = await PoolV3Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -59,7 +59,7 @@ contract("RebalancingStrategyV1", accounts => {
 
         let usdcAfter = await usdcp.balanceOf(pool.address)
         let wethAfter = await weth.balanceOf(pool.address)
-        let wethValue = await pool.investedTokenValue()
+        let wethValue = await pool.riskAssetValue()
         
         let expectedUsdcAfter = depositAmount * 0.4
         let expectedWethValueAfter = depositAmount * 0.6
@@ -80,7 +80,7 @@ contract("RebalancingStrategyV1", accounts => {
 
         let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
         let balanceWethAfter = await weth.balanceOf(pool.address)
-        const totalPortfolioValueAfter = await pool.totalPortfolioValue() 
+        const totalPortfolioValueAfter = await pool.totalValue() 
 
         assert.equal(balanceUsdcAfter.toString(), toUsdc('80'), "Invalid usdc value")
         assert.equal(balanceWethAfter.toString(), toWei('0.06'), "Invalid weth value")
@@ -97,7 +97,7 @@ contract("RebalancingStrategyV1", accounts => {
 
         let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
         let balanceWethAfter = await weth.balanceOf(pool.address)
-        const totalPortfolioValueAfter = await pool.totalPortfolioValue() 
+        const totalPortfolioValueAfter = await pool.totalValue() 
 
         assert.equal(balanceUsdcAfter.toString(), toUsdc('40'), "Invalid usdc value")
         assert.equal(balanceWethAfter.toString(), toWei('0.03'), "Invalid weth value")
@@ -115,7 +115,7 @@ contract("RebalancingStrategyV1", accounts => {
       
         let balanceUsdcAfter = await usdcp.balanceOf(pool.address)
         let balanceWethAfter = await weth.balanceOf(pool.address)
-        const totalPortfolioValueAfter = await pool.totalPortfolioValue() 
+        const totalPortfolioValueAfter = await pool.totalValue() 
 
         assert.equal(balanceUsdcAfter.toString(), toUsdc('40'), "Invalid usdc value")
         assert.equal(balanceWethAfter.toString(), toWei('0.03'), "Invalid weth value")
@@ -131,9 +131,9 @@ contract("RebalancingStrategyV1", accounts => {
         await strategy.setRebalancingThreshold(10) 
         await pool.investTest()  
 
-        const totalPortfolioValue0 = await pool.totalPortfolioValue() 
-        assert.equal((await pool.depositTokenValue()) / totalPortfolioValue0, 0.4, "Invalid usdc %")
-        assert.equal((await pool.investedTokenValue()) / totalPortfolioValue0, 0.6, "Invalid usdc %")
+        const totalPortfolioValue0 = await pool.totalValue() 
+        assert.equal((await pool.stableAssetValue()) / totalPortfolioValue0, 0.4, "Invalid usdc %")
+        assert.equal((await pool.riskAssetValue()) / totalPortfolioValue0, 0.6, "Invalid usdc %")
 
         const usdc1 = await usdcp.balanceOf(pool.address)
         const weth1 = await weth.balanceOf(pool.address)
@@ -166,10 +166,10 @@ contract("RebalancingStrategyV1", accounts => {
         await strategy.setRebalancingThreshold(2) // 2%
         await pool.investTest()  
 
-        const totalPortfolioValue0 = await pool.totalPortfolioValue() 
+        const totalPortfolioValue0 = await pool.totalValue() 
         assert.equal(totalPortfolioValue0, toUsdc('200'), "Invalid portfolio value")
-        assert.equal((await pool.depositTokenValue()) / totalPortfolioValue0, 0.4, "Invalid usdc %")
-        assert.equal((await pool.investedTokenValue()) / totalPortfolioValue0, 0.6, "Invalid usdc %")
+        assert.equal((await pool.stableAssetValue()) / totalPortfolioValue0, 0.4, "Invalid usdc %")
+        assert.equal((await pool.riskAssetValue()) / totalPortfolioValue0, 0.6, "Invalid usdc %")
 
         const usdc1 = await usdcp.balanceOf(pool.address)
         const weth1 = await weth.balanceOf(pool.address)

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.14;
 
-import "../PoolV2.sol";
+import "../PoolV3.sol";
 
-contract PoolV2Test is PoolV2  {
+contract PoolV3Test is PoolV3  {
 
     constructor(
         address _uniswapV2RouterAddress,
@@ -13,7 +13,7 @@ contract PoolV2Test is PoolV2  {
         address _lpTokenAddress,
         address _strategyAddress,
         uint _upkeepInterval,
-        uint _feesPerc) PoolV2(
+        uint _feesPerc) PoolV3(
             _uniswapV2RouterAddress,
             _priceFeedAddress,
             _depositTokenAddress,

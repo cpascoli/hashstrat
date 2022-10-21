@@ -4,7 +4,7 @@ require('dotenv').config()
 const mnemonic = process.env.MNEMONIC
 const url_polygon_main = process.env.RPC_URL_POLYGON_MAIN
 const url_polygon_test = process.env.RPC_URL_POLYGON_TEST
-const url_kovan = process.env.RPC_URL_KOVAN
+const url_goerli = process.env.RPC_URL_GOERLI
 
 const etherscan_api_key = process.env.ETHERSCAN_API_KEY
 const polygonscan_api_key = process.env.POLYGONSCAN_API_KEY
@@ -22,6 +22,7 @@ module.exports = {
       timeoutBlocks: 200,
       networkCheckTimeout: 60000,
       gasPrice: 500000000,
+      gasLimit: 6721975,
     },
     cldev: {
       host: '127.0.0.1',
@@ -47,27 +48,32 @@ module.exports = {
       timeoutBlocks: 200,
       skipDryRun: true
     },
-    kovan: {
-      provider: () => new HDWalletProvider(mnemonic, url_kovan),
-      network_id: '42',
-      gas: 8000000,
-      networkCheckTimeout: 300000,
-      timeoutBlocks: 50,
+    goerli: {
+      provider: () => new HDWalletProvider(mnemonic, url_goerli),
+      network_id: '5',
+      confirmations: 1,
+      // gas: 4465030,
+      // gasPrice: 32510029547,
+      // timeoutBlocks: 200,
       skipDryRun: true
     },
     matic: {
       provider: () => new HDWalletProvider(mnemonic, url_polygon_main),
       network_id: 137,
       confirmations: 0,
-      timeoutBlocks: 50,
-      networkCheckTimeout:60000,
-      gasPrice: 50000000000,
+
+      networkCheckTimeout: 1000000,
+      timeoutBlocks: 200,
+
+      gasPrice: 180000000000,
+      gas: 6721975,
+      // gasLimit: 6721975,
       skipDryRun: false,
     },
   },
   compilers: {
     solc: {
-      version: '0.8.14',
+      version: '0.8.15',
     },
   },
   plugins: ['truffle-plugin-verify'],

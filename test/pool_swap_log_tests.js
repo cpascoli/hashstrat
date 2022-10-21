@@ -3,13 +3,13 @@ const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const PoolV2Test = artifacts.require("PoolV2Test")
+const PoolV3Test = artifacts.require("PoolV3Test")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
-contract("PoolV2 - swap log", accounts => {
+contract("PoolV3 - swap log", accounts => {
 
     const defaultAccount = accounts[0]
     const account1 = accounts[1]
@@ -31,7 +31,7 @@ contract("PoolV2 - swap log", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
-        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
+        pool = await PoolV3Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()

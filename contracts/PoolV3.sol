@@ -2,12 +2,18 @@
 pragma solidity ^0.8.14;
 
 import "./Pool.sol";
+import "./IDAOTokenFarm.sol";
 
-contract PoolV2 is Pool  {
+
+/**
+ * Owner of this contract should be DAOOperations
+ */
+contract PoolV3 is Pool  {
 
     uint8 public immutable feesPercDecimals = 4;
-    uint public immutable maxFeesPerc = 200; // 2% max fees
     uint public feesPerc;                    // using feePercDecimals precision (e.g 100 is 1%)
+
+    IDAOTokenFarm public daoTokenFarm;
 
     constructor(
         address _uniswapV2RouterAddress,
@@ -61,38 +67,51 @@ contract PoolV2 is Pool  {
     //             := fees_perc * gains_perc(account) * pool_value * lp_to_withdraw / lp_total_supply * lp_total_supply / pool_value 
     //             := fees_perc * gains_perc(account) * lp_to_withdraw 
 
-    function feesForWithdraw(uint lpTokensAmount, address account) public view returns (uint) {
-        uint precision = 10 ** (2 * uint(feesPercDecimals));
+    function feesForWithdraw(uint lpToWithdraw, address account) public view returns (uint) {
 
-        return feesPerc * gainsPerc(account) * lpTokensAmount / precision;
-    //    return feesPerc * gainsPerc(account) * lpTokensAmount * lpToken.totalSupply() / totalPortfolioValue() / precision;
-    
+        return feesPerc * gainsPerc(account) * lpToWithdraw / (10 ** (2 * uint(feesPercDecimals)));    
     }
 
-    function gainsPerc(address account) public view returns (uint) {
-        // uint feesPrecision = 10 ** uint(feesPercDecimals);
-        uint valueInPool = lpTokensValue(lpToken.balanceOf(account));
 
-        // account has gains if their value withdrawn + their value in the pool > ther deposits
-        bool hasGains =  withdrawals[account] + valueInPool > deposits[account];
+    function gainsPerc(address account) public view returns (uint) {
+        // if the address has no deposits (e.g. LPs were transferred from original depositor)
+        // then consider the entire LP value as gains.
+        // This is to prevent tax avoidance by withdrawing the LPs to different addresses
+        if (deposits[account] == 0) return 10 ** uint(feesPercDecimals); // 100% gains
+
+        //  account for staked LPs
+        uint stakedLP = address(daoTokenFarm) != address(0) ? daoTokenFarm.getStakedBalance(account, address(lpToken)) : 0;
+        uint valueInPool = lpTokensValue(lpToken.balanceOf(account) + stakedLP);
+
+        // check if accounts is in gain
+        bool hasGains = withdrawals[account] + valueInPool > deposits[account];
 
         // return the fees on the gains or 0 if there are no gains
         return hasGains ? 10 ** uint(feesPercDecimals) * ( withdrawals[account] + valueInPool - deposits[account] ) / deposits[account] : 0;
     }
 
+
     function lpTokensValue (uint lpTokens) public view returns (uint) {
-        return lpToken.totalSupply() > 0 ? this.totalPortfolioValue() * lpTokens / lpToken.totalSupply() : 0;
+        return lpToken.totalSupply() > 0 ? this.totalValue() * lpTokens / lpToken.totalSupply() : 0;
     }
 
 
     //////  OWNER FUNCTIONS  ////// 
     function setFeesPerc(uint _feesPerc) public onlyOwner {
-        require(_feesPerc <= maxFeesPerc, "Max fees exceeded");
         feesPerc = _feesPerc;
     }
 
-    function withdrawFees(uint amount) public onlyOwner {
-        uint fees = amount == 0 ? lpToken.balanceOf(address(this)) : amount;
-        lpToken.transfer(msg.sender, fees);
+    function setFarmAddress(address farmAddress) public onlyOwner {
+        daoTokenFarm = IDAOTokenFarm(farmAddress);
     }
+
+    // Withdraw the given amount of LP token fees in deposit tokens
+    function collectFees(uint amount) public onlyOwner {
+        uint fees = amount == 0 ? lpToken.balanceOf(address(this)) : amount;
+        if (fees > 0) {
+            lpToken.transfer(msg.sender, fees);
+            super.withdrawLP(fees);
+        }
+    }
+
 }

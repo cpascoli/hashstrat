@@ -62,7 +62,7 @@ contract("Pool - withdraw", accounts => {
         await usdcp.approve(pool.address, deposit1, { from: account1 })
         await pool.deposit(deposit1, { from: account1 })
 
-        const portfolioValue = await pool.totalPortfolioValue()
+        const portfolioValue = await pool.totalValue()
         assert.equal(portfolioValue, deposit1 , "Portfolio value should be the same as the initial deposit")
 
         // peform deposit for account2
@@ -73,7 +73,7 @@ contract("Pool - withdraw", accounts => {
         assert.equal(fromUsdc(( await usdcp.balanceOf(account2))), 900, "Invalid account2 balance before")
         assert.equal(fromUsdc((await pool.portfolioValue(account1))), 60 , "Invalid account1 portfolio value")
         assert.equal(fromUsdc((await pool.portfolioValue(account2))), 100 , "Invalid account2 portfolio value")
-        assert.equal(fromUsdc((await pool.totalPortfolioValue())), 160, "Invalid total portfolio value before")
+        assert.equal(fromUsdc((await pool.totalValue())), 160, "Invalid total portfolio value before")
         assert.equal((await pool.portfolioPercentage(account1)) * 100 / precision, 37.5, "Invalid account1 portfolio % before")
         assert.equal((await pool.portfolioPercentage(account2)) * 100 / precision, 62.5, "Invalid account2 portfolio % before")
         
@@ -85,7 +85,7 @@ contract("Pool - withdraw", accounts => {
         assert.equal(fromUsdc((await usdcp.balanceOf(account2))), 900, "Invalid account2 balance after")
         assert.equal(round(fromUsdc((await pool.portfolioValue(account1)))), 40 , "Invalid account1 portfolio value after")
         assert.equal(round(fromUsdc((await pool.portfolioValue(account2)))), 100 , "Invalid account2 portfolio value after")
-        assert.equal(fromUsdc((await pool.totalPortfolioValue())), 140, "Invalid total portfolio value")
+        assert.equal(fromUsdc((await pool.totalValue())), 140, "Invalid total portfolio value")
         assert.equal(round((await pool.portfolioPercentage(account1)) * 100 / precision), 28.57, "Invalid account1 portfolio % before")
         assert.equal(round((await pool.portfolioPercentage(account2)) * 100 / precision), 71.43, "Invalid account2 portfolio % before")
 
@@ -107,7 +107,7 @@ contract("Pool - withdraw", accounts => {
         await usdcp.approve(pool.address, deposit1, { from: account1 })
         await pool.deposit(deposit1, { from: account1 })
 
-        const portfolioValue = await pool.totalPortfolioValue()
+        const portfolioValue = await pool.totalValue()
         assert.equal(portfolioValue, deposit1 , "Portfolio value should be the same as the initial deposit")
 
         // peform deposit for account2
@@ -118,7 +118,7 @@ contract("Pool - withdraw", accounts => {
         assert.equal(fromUsdc(( await usdcp.balanceOf(account2))), 900, "Invalid account2 balance before")
         assert.equal(fromUsdc((await pool.portfolioValue(account1))), 60 , "Invalid account1 portfolio value")
         assert.equal(fromUsdc((await pool.portfolioValue(account2))), 100 , "Invalid account2 portfolio value")
-        assert.equal(fromUsdc((await pool.totalPortfolioValue())), 160, "Invalid total portfolio value before")
+        assert.equal(fromUsdc((await pool.totalValue())), 160, "Invalid total portfolio value before")
         assert.equal((await pool.portfolioPercentage(account1)) * 100 / precision, 37.5, "Invalid account1 portfolio % before")
         assert.equal((await pool.portfolioPercentage(account2)) * 100 / precision, 62.5, "Invalid account2 portfolio % before")
 
@@ -127,7 +127,7 @@ contract("Pool - withdraw", accounts => {
 
         assert.equal(fromUsdc((await pool.portfolioValue(account1))), 60, "Invalid portfolio value for account1 after withdrawal")
         assert.equal(fromUsdc((await pool.portfolioValue(account2))), 100, "Invalid portfolio value for account2 after withdrawal")
-        assert.equal(fromUsdc((await pool.totalPortfolioValue())), 160, "Invalid total portfolio value for account2 after withdrawal")
+        assert.equal(fromUsdc((await pool.totalValue())), 160, "Invalid total portfolio value for account2 after withdrawal")
         
         await uniswap.setPrice(3000) // ETH goes up to $3000
 
@@ -139,21 +139,21 @@ contract("Pool - withdraw", accounts => {
 
         assert.equal(fromUsdc((await pool.portfolioValue(account1))), account1Val, "Invalid portfolio value for account1")
         assert.equal(fromUsdc((await pool.portfolioValue(account2))), account2Val, "Invalid portfolio value for account2")
-        assert.equal(fromUsdc((await pool.totalPortfolioValue())), portfolioVal, "Invalid total portfolio value for account2 after withdrawal")
+        assert.equal(fromUsdc((await pool.totalValue())), portfolioVal, "Invalid total portfolio value for account2 after withdrawal")
 
         // account1 withdraws all 
         await pool.withdrawAll({ from: account1 })
 
         assert.equal(fromUsdc((await pool.portfolioValue(account1))), 0, "Invalid portfolio value for account1 after withdrawal")
         assert.equal(fromUsdc((await pool.portfolioValue(account2))), account2Val, "Invalid portfolio value for account2 after withdrawal")
-        assert.equal(fromUsdc((await pool.totalPortfolioValue())), (portfolioVal - account1Val), "Invalid total portfolio value for account2 after withdrawal")
+        assert.equal(fromUsdc((await pool.totalValue())), (portfolioVal - account1Val), "Invalid total portfolio value for account2 after withdrawal")
 
         // account2 withdraws all 
         await pool.withdrawAll({ from: account2 })
 
         assert.equal(round(fromUsdc((await pool.portfolioValue(account1))), 10), 0, "Invalid portfolio value for account1 after withdrawal")
         assert.equal(round(fromUsdc((await pool.portfolioValue(account2))), 10), 0, "Invalid portfolio value for account2 after withdrawal")
-        assert.equal(round(fromUsdc((await pool.totalPortfolioValue())), 10), 0, "Invalid total portfolio value for account2 after withdrawal")
+        assert.equal(round(fromUsdc((await pool.totalValue())), 10), 0, "Invalid total portfolio value for account2 after withdrawal")
     })
 
 })

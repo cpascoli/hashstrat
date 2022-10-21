@@ -98,7 +98,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
         updateMovingAverage(price);
 
         // do nothing if the pool is empty
-        uint poolValue = pool.totalPortfolioValue();
+        uint poolValue = pool.totalValue();
         if (poolValue == 0) {
             return (StrategyAction.NONE, 0);
         }
@@ -111,7 +111,7 @@ contract TrendFollowV1 is IStrategy, Ownable {
     function evaluateTrade() public view returns (StrategyAction action, uint amountIn) {
 
         action = StrategyAction.NONE;
-        uint poolValue = pool.totalPortfolioValue();
+        uint poolValue = pool.totalValue();
 
         (  /*uint80 roundID**/, int price, /*uint startedAt*/,
            /*uint priceTimestamp*/, /*uint80 answeredInRound*/
@@ -152,8 +152,8 @@ contract TrendFollowV1 is IStrategy, Ownable {
 
     // Returns the % of invest tokens in the pool with percentPrecision precision
     function investPercent() public view returns (uint investPerc) {
-        uint investTokenValue = pool.investedTokenValue();
-        uint poolValue = pool.totalPortfolioValue();
+        uint investTokenValue = pool.riskAssetValue();
+        uint poolValue = pool.totalValue();
         if (poolValue == 0) return 0;
 
         investPerc = (percentPrecision * investTokenValue / poolValue); // the % of invest tokens in the pool

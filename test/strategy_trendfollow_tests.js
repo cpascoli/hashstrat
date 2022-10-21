@@ -3,7 +3,7 @@ const { round, toWei, fromWei, fromUsdc, toUsdc, increaseTime } = require("./hel
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const PoolV2Test = artifacts.require("PoolV2Test")
+const PoolV3Test = artifacts.require("PoolV3Test")
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const TrendFollowV1 = artifacts.require("TrendFollowV1");
@@ -38,7 +38,7 @@ contract("TrendFollowV1", accounts => {
                                              20, 0, 0, 100  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
                                         )
 
-        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
+        pool = await PoolV3Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -71,7 +71,7 @@ contract("TrendFollowV1", accounts => {
         await usdcp.transfer(pool.address, toUsdc('200'))
         await weth.transfer(pool.address, toWei('0.4'))
         
-        const expectedUsdPerc = 200 / fromUsdc((await pool.totalPortfolioValue()))
+        const expectedUsdPerc = 200 / fromUsdc((await pool.totalValue()))
         assert.equal(minAllocationPerc, expectedUsdPerc , "Pool should have the min USDC allocation")
 
         // trigger the strategy
@@ -101,7 +101,7 @@ contract("TrendFollowV1", accounts => {
         await usdcp.transfer(pool.address, toUsdc('800'))
         await weth.transfer(pool.address, toWei('0.1'))
         
-        const expectedEthPerc = fromUsdc((await pool.investedTokenValue())) / fromUsdc((await pool.totalPortfolioValue()))
+        const expectedEthPerc = fromUsdc((await pool.riskAssetValue())) / fromUsdc((await pool.totalValue()))
         assert.equal(minAllocationPerc, expectedEthPerc , "Pool should have min ETH allocation")
 
         // trigger the strategy
@@ -148,7 +148,7 @@ contract("TrendFollowV1", accounts => {
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 0, "Pool should have expected USDC balance")
         assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), 0.25 + 0.2, "Pool should have expected WETH balance")
-        assert.equal( fromUsdc( await pool.investedTokenValue()).toString(), 1125, "Pool should have expected WETH Value")
+        assert.equal( fromUsdc( await pool.riskAssetValue()).toString(), 1125, "Pool should have expected WETH Value")
     })
 
 
@@ -182,7 +182,7 @@ contract("TrendFollowV1", accounts => {
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 + 375, "Pool should have expected USDC balance")
         assert.equal( round(fromWei( await weth.balanceOf(pool.address)).toString(), 6), 0, "Pool should have expected WETH balance")
-        assert.equal( round(fromUsdc( await pool.investedTokenValue()).toString() ), 0, "Pool should have expected WETH Value")
+        assert.equal( round(fromUsdc( await pool.riskAssetValue()).toString() ), 0, "Pool should have expected WETH Value")
     })
 
 

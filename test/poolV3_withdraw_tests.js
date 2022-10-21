@@ -5,13 +5,13 @@ const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const PoolV2Test = artifacts.require("PoolV2Test")
+const PoolV3Test = artifacts.require("PoolV3Test")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const RebalancingStrategyV1 = artifacts.require("RebalancingStrategyV1");
 
-contract("PoolV2 - withdraw", accounts => {
+contract("PoolV3 - withdraw", accounts => {
 
     const defaultAccount = accounts[0]
     const account1 = accounts[1]
@@ -33,7 +33,7 @@ contract("PoolV2 - withdraw", accounts => {
 
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
-        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
+        pool = await PoolV3Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
         
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -50,6 +50,7 @@ contract("PoolV2 - withdraw", accounts => {
 
         precision = 10 ** (await pool.portfolioPercentageDecimals()) // (8 digits datafeed & portfolio % precision)
 
+       
         await uniswap.setPrice(2000)
     })
 
@@ -86,7 +87,7 @@ contract("PoolV2 - withdraw", accounts => {
         await usdcp.approve(pool.address, deposit, { from: account1 })
         await pool.deposit(deposit, { from: account1 })
 
-        const portfolioValue = await pool.totalPortfolioValue()
+        const portfolioValue = await pool.totalValue()
         assert.equal(portfolioValue, deposit , "Portfolio value should be the same as the initial deposit")
 
         const account1LP = await lptoken.balanceOf(account1)
@@ -123,5 +124,56 @@ contract("PoolV2 - withdraw", accounts => {
         const expectedUsdBalance = round(1000 - 60 + 32 - 0.192, 1)
         assert.equal(usdBalance, expectedUsdBalance, "Invalid LP tokens left")
     })
+
+
+
+    it("When LP tokens are withdrawn by a different account, they pay the full fees", async () => {
+   
+        const feesPerc = await pool.feesPerc() / 10 ** await pool.feesPercDecimals()
+
+        // account1 deposit 60 usdc and gets 60 LPs
+        let deposit = toUsdc('60')
+        await usdcp.approve(pool.address, deposit, { from: account1 })
+        await pool.deposit(deposit, { from: account1 })
+        assert.equal(await lptoken.balanceOf(account1), toUsdc('60'), "Invalid LP tokens for deposit")
+
+        // price increase, account1's LPs are with more
+        await uniswap.setPrice(4000)
+
+        // account1 transfer 60 LP to account2
+        await lptoken.transfer(account2, await lptoken.balanceOf(account1), { from: account1 })
+
+        // verify withdraw fees for account2
+        const expectedFees = toUsdc('60') * 0.01 /// 1% fees over the full LP balance
+        assert.equal( await pool.feesForWithdraw(await lptoken.balanceOf(account2), account2) , expectedFees, "invalid fees to withdraw")
+
+        // account2 withdraw 60 LP tokens
+        await pool.withdrawLP(await lptoken.balanceOf(account2), { from: account2 })
+
+        // verify fees in the pool
+        assert.equal(await lptoken.balanceOf(pool.address), expectedFees, "invalid fees in pool")
+    })
+
+
+  
+    it("When the owner collects all fees, no fees are left in the pool", async () => {
+   
+        // peform deposit for account1
+        let deposit = toUsdc('60')
+        await usdcp.approve(pool.address, deposit, { from: account1 })
+        await pool.deposit(deposit, { from: account1 })
+
+        // price increase, no user has gains
+        await uniswap.setPrice(4000)
+
+        // withdraw 20 LP tokens, 0.12 LP are left in the pool as fee
+        await pool.withdrawLP(toUsdc('20'), { from: account1 })
+
+        // owner collect all fees
+        await pool.collectFees(0, { from: defaultAccount })
+
+        assert.equal( await lptoken.balanceOf(pool.address), 0, "Invalid LP tokens left in the pool")
+    })
+
 
 })

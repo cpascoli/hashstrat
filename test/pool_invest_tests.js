@@ -3,7 +3,7 @@ const { round, toWei, fromWei, fromUsdc, toUsdc } = require("./helpers")
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const PoolV2Test = artifacts.require("PoolV2Test")
+const PoolV3Test = artifacts.require("PoolV3Test")
 
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
@@ -32,13 +32,13 @@ contract("Pool - invest", (accounts, network) => {
         uniswap = await UniswapV2Router.new(usdcp.address, weth.address)
         strategy = await RebalancingStrategyV1.new('0x0000000000000000000000000000000000000000', uniswap.address, usdcp.address, weth.address, 60, 2)
         
-        pool = await PoolV2Test.new(
+        pool = await PoolV3Test.new(
             uniswap.address, 
             uniswap.address,  // pricefeed
             usdcp.address, 
             weth.address, 
             lptoken.address, 
-            strategy.address, 
+            strategy.address,
             24 * 60 * 60, 
             100,
         )
@@ -166,7 +166,7 @@ contract("Pool - invest", (accounts, network) => {
         await usdcp.approve(pool.address, deposit1, { from: account1 })
         await pool.deposit(deposit1, { from: account1 })
 
-        const portfolioValue = await pool.totalPortfolioValue() 
+        const portfolioValue = await pool.totalValue() 
         assert.equal(portfolioValue, deposit1 , "Portfolio value should be the same as the initial deposit")
 
         // expect portfolio allocation for account1 to be 100 LP tokens
@@ -176,7 +176,7 @@ contract("Pool - invest", (accounts, network) => {
         // swap tokens
         await pool.investTest()
 
-        const portfolioValueAfterInvest = await pool.totalPortfolioValue()
+        const portfolioValueAfterInvest = await pool.totalValue()
         assert.equal(fromUsdc(portfolioValueAfterInvest), fromUsdc(deposit1), "Portfolio value should still be the same as the initial deposit")
 
         // peform deposit for account2
@@ -184,7 +184,7 @@ contract("Pool - invest", (accounts, network) => {
         await pool.deposit(deposit2, { from: account2 })
 
         // expect total portfolio value of 300 (the sum of the 2 deposits)
-        const portfolioValueAfter = await pool.totalPortfolioValue() 
+        const portfolioValueAfter = await pool.totalValue() 
         assert.equal(fromUsdc(portfolioValueAfter), 300, "Portfolio value should be the sum of the 2 deposits")
 
         // expect portfolio allocation for account2 to be 200 LP tokens

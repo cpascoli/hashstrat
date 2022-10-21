@@ -3,7 +3,7 @@ const { round, toWei, fromWei, fromUsdc, toUsdc, increaseTime } = require("./hel
 
 const USDCP = artifacts.require("USDCP")
 const WETH = artifacts.require("WETH")
-const PoolV2Test = artifacts.require("PoolV2Test")
+const PoolV3Test = artifacts.require("PoolV3Test")
 const UniswapV2Router = artifacts.require("UniswapV2Router")
 const PoolLPToken = artifacts.require("PoolLPToken")
 const MeanReversionV1 = artifacts.require("MeanReversionV1");
@@ -38,7 +38,7 @@ contract("MeanReversionV1", accounts => {
                                              350, initialMeanValue,  // movingAveragePeriod, initialMeanValue
                                              20, 66, 33, 5  // minAllocationPerc, targetPricePercUp, targetPricePercDown, tokensToSwapPerc
                                         )
-        pool = await PoolV2Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
+        pool = await PoolV3Test.new(uniswap.address, uniswap.address, usdcp.address, weth.address, lptoken.address, strategy.address, 24 * 60 * 60, 100);
 
         await lptoken.addMinter(pool.address)
         await lptoken.renounceMinter()
@@ -73,7 +73,7 @@ contract("MeanReversionV1", accounts => {
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), '160', "Pool should have expected USDC balance")
         assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), '0.02', "Pool should have expected WETH balance")
-        assert.equal( fromUsdc( await pool.investedTokenValue()).toString(), '40', "Pool should have expected WETH Value")
+        assert.equal( fromUsdc( await pool.riskAssetValue()).toString(), '40', "Pool should have expected WETH Value")
     })
 
 
@@ -94,7 +94,7 @@ contract("MeanReversionV1", accounts => {
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), '200', "Pool should have expected USDC balance")
         assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), '0.4', "Pool should have expected WETH balance")
-        assert.equal( fromUsdc( await pool.investedTokenValue()).toString(), '800', "Pool should have expected WETH Value")
+        assert.equal( fromUsdc( await pool.riskAssetValue()).toString(), '800', "Pool should have expected WETH Value")
     })
 
 
@@ -135,7 +135,7 @@ contract("MeanReversionV1", accounts => {
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 + 41.5, "Pool should have expected USDC balance")
         assert.equal( fromWei( await weth.balanceOf(pool.address)).toString(), 0.25 - 0.0125, "Pool should have expected WETH balance")
-        assert.equal( fromUsdc( await pool.investedTokenValue()).toString(), 830 - 41.5, "Pool should have expected WETH Value")
+        assert.equal( fromUsdc( await pool.riskAssetValue()).toString(), 830 - 41.5, "Pool should have expected WETH Value")
     })
 
 
@@ -174,7 +174,7 @@ contract("MeanReversionV1", accounts => {
 
         assert.equal( fromUsdc( await usdcp.balanceOf(pool.address)).toString(), 500 - 25, "Pool should have expected USDC balance")
         assert.equal( round(fromWei( await weth.balanceOf(pool.address)).toString(), 6), 0.25 + 0.018657, "Pool should have expected WETH balance")
-        assert.equal( round(fromUsdc( await pool.investedTokenValue()).toString() ), 335 + 25, "Pool should have expected WETH Value")
+        assert.equal( round(fromUsdc( await pool.riskAssetValue()).toString() ), 335 + 25, "Pool should have expected WETH Value")
     })
 
     it("when strategy is called within a day the moving average is not udpated ", async () => {

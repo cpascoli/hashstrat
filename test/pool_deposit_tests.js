@@ -134,7 +134,7 @@ contract("Pool - deposit", accounts => {
         await usdcp.approve(pool.address, depositAmount, { from: defaultAccount })
         await pool.deposit(depositAmount, { from: defaultAccount })
 
-        const portfolioValue = await pool.totalPortfolioValue() 
+        const portfolioValue = await pool.totalValue() 
         assert.equal(portfolioValue, depositAmount , "Portfolio value should be the same as initial deposit")
 
         // expect 100 initial portfolio allocation
@@ -165,7 +165,7 @@ contract("Pool - deposit", accounts => {
         // peform first deposit
         await pool.deposit(firstDeposit, { from: defaultAccount })
 
-        const portfolioValue1 = await pool.totalPortfolioValue() 
+        const portfolioValue1 = await pool.totalValue() 
         assert.equal(fromUsdc(portfolioValue1), 100, "Portfolio value should be the same as the initial deposit")
 
         // expect 100 initial portfolio allocation
@@ -175,7 +175,7 @@ contract("Pool - deposit", accounts => {
         // peform second deposit
         await pool.deposit(secondDeposit, { from: defaultAccount })
 
-        const portfolioValue2 = await pool.totalPortfolioValue() 
+        const portfolioValue2 = await pool.totalValue() 
         assert.equal(fromUsdc(portfolioValue2), 300, "Portfolio value should be the sum of the 2 deposits")
 
         // expect 300 LP tokens for portfolio allocation
@@ -201,7 +201,7 @@ contract("Pool - deposit", accounts => {
         await usdcp.approve(pool.address, deposit1, { from: account1 })
         await pool.deposit(deposit1, { from: account1 })
 
-        const portfolioValue1 = await pool.totalPortfolioValue() 
+        const portfolioValue1 = await pool.totalValue() 
         assert.equal(portfolioValue1, deposit1 , "Portfolio value should be the same as the initial deposit")
 
         // expect portfolio allocation for account1 to be 100 LP tokens
@@ -213,7 +213,7 @@ contract("Pool - deposit", accounts => {
         await pool.deposit(deposit2, { from: account2 })
 
         // expect total portfolio value of 300 (the sum of the 2 deposits)
-        const portfolioValue2 = await pool.totalPortfolioValue() 
+        const portfolioValue2 = await pool.totalValue() 
         assert.equal(fromUsdc(portfolioValue2), 300, "Portfolio value should be the sum of the 2 deposits")
 
         // expect portfolio allocation for account2 to be 200 LP tokens

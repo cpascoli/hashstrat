@@ -47,20 +47,48 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         strategy = IStrategy(_strategyAddress);
         uniswapV2RouterAddress = _uniswapV2RouterAddress;
 
-
         upkeepInterval = _upkeepInterval;
         lastUpkeepTimeStamp = block.timestamp;
     }
 
 
-    // returns the value of the deposit tokens in USD using the latest pricefeed price
-    function depositTokenValue() public override view returns(uint) {
+    ///// PUBLIC VIEW FUNCTIONS /////
+
+    function portfolioValue(address _addr) public view returns (uint) {
+        // the value of the portfolio allocated to the user, espressed in deposit tokens
+        uint precision = 10 ** uint(portfolioPercentageDecimals());
+        return totalValue() * portfolioPercentage(_addr) / precision;
+    }
+
+
+    // Returns the % of the pool owned by _addr using 'priceFeed' decimals precision
+    function portfolioPercentage(address _addr) public view returns (uint) {
+
+        if (lpToken.totalSupply() == 0) return 0;
+
+        return 10 ** uint(portfolioPercentageDecimals()) * lpToken.balanceOf(_addr) / lpToken.totalSupply();
+    }
+
+
+    function getSwapsInfo() public view returns (PoolLib.SwapInfo[] memory) {
+        return swaps;
+    }
+
+
+    // returns the portfolio value in depositTokens
+    function totalValue() public override view returns(uint) {
+        return stableAssetValue() + riskAssetValue();
+    }
+
+
+    //TODO return the value of the stable asset in USD
+    function stableAssetValue() public override view returns(uint) {
         return depositToken.balanceOf(address(this));
     }
 
 
-    // returns the value of the invest tokens in USD using the latest pricefeed price
-    function investedTokenValue() public override view returns(uint) {
+    // returns the value of the risk asset in USD using the latest pricefeed price
+    function riskAssetValue() public override view returns(uint) {
 
         ( /*uint80 roundID**/, int price, /*uint startedAt*/, /*uint timeStamp*/, /*uint80 answeredInRound*/) = priceFeed.latestRoundData();
         require (price >= 0, "Invest token price can't be negative");
@@ -85,147 +113,15 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
     }
 
 
-    // returns the portfolio value in depositTokens
-    function totalPortfolioValue() public override view returns(uint) {
-        uint depositTokens = depositToken.balanceOf(address(this));
-        return depositTokens + investedTokenValue();
-    }
-
-
-
-    //////  PUBLIC FUNCTIONS  ////// 
-
-    // Returns the % of the fund owned by the input _addr using 18 digits precision
-    function portfolioPercentage(address _addr) public view returns (uint) {
-        // the % of the portfolio of the user
-        if (lpToken.totalSupply() == 0) return 0;
-
-        return 10 ** uint(portfolioPercentageDecimals()) * lpToken.balanceOf(_addr) / lpToken.totalSupply();
+    // percentage of the pool value held in invest tokens 
+    function investTokenPercentage() public view returns (uint)  {
+        return (lpToken.totalSupply() == 0) ? 0 : 10 ** uint(portfolioPercentageDecimals()) * riskAssetValue() / totalValue(); 
     }
 
 
     function portfolioPercentageDecimals() public view returns (uint8) {
         return priceFeed.decimals();
     }
-
-
-    // percentage of the pool value held in invest tokens 
-    function investTokenPercentage() public view returns (uint)  {
-        return (lpToken.totalSupply() == 0) ? 0 : 10 ** uint(portfolioPercentageDecimals()) * investedTokenValue() / totalPortfolioValue(); 
-    }
-
-
-    function portfolioValue(address _addr) public view returns (uint) {
-        // the value of the portfolio allocated to the user, espressed in deposit tokens
-        uint precision = 10 ** uint(portfolioPercentageDecimals());
-        return totalPortfolioValue() * portfolioPercentage(_addr) / precision;
-    }
-
-
-    // User deposits 'amount' of depositTokens into the pool
-    function deposit(uint amount) public override {
-
-        //portfolio allocation before the deposit
-        uint investTokenPerc = investTokenPercentage();
-
-        //transfer deposit amount into the pool
-        super.deposit(amount);
-
-        uint depositLPTokens = lpTokensForDeposit(amount);
-
-        if (lpToken.totalSupply() == 0) {
-            // run the strategy after the first deposit
-            invest(); 
-        } else {
-            // swap some of the deposit amount into investTokens to keep the pool balanced at current levels
-            uint precision = 10 ** uint(portfolioPercentageDecimals());
-            uint rebalanceAmount = investTokenPerc * amount / precision;
-            swapIfNotExcessiveSlippage(StrategyAction.BUY, address(depositToken), address(investToken), rebalanceAmount, false);
-        }
-
-        // mint lp tokens to the user
-        lpToken.mint(msg.sender, depositLPTokens);
-    }
-
-
-    function lpTokensForDeposit(uint amount) internal view returns (uint) {
-        uint depositLPTokens;
-         if (lpToken.totalSupply() == 0) {
-             ///// If first deposit => allocate the inital LP tokens amount to the user
-            depositLPTokens = amount;
-        } else {
-            ///// if already have allocated LP tokens => calculate the additional LP tokens for this deposit
-
-            // calculate portfolio % of the deposit (using lpPrecision digits precision)
-            uint portFolioValue = totalPortfolioValue();
-            require(portFolioValue > 0, "Portfolio value is 0");
-
-            uint lpPrecision = 10 ** uint(lpToken.decimals());
-            uint portFolioPercentage = lpPrecision * amount / portFolioValue;
-
-            // calculate the amount of LP tokens for the deposit so that they represent 
-            // a % of the existing LP tokens equivalent to the % value of this deposit to the whole portfolio value.
-            // 
-            // X := P * T / (1 - P)  
-            //      X: additinal LP toleks to allocate to the user to account for this deposit
-            //      P: Percentage of portfolio accounted by this deposit
-            //      T: total LP tokens allocated before this deposit
-    
-            depositLPTokens = (portFolioPercentage * lpToken.totalSupply()) / ((1 * lpPrecision) - portFolioPercentage);
-        }
-
-        return depositLPTokens;
-    }
-
-
-    // Withdraw all LP tokens
-    function withdrawAll() external {
-        withdrawLP(lpToken.balanceOf(msg.sender));
-    }
-
-    // Withdraw the amount of lp tokens provided
-    function withdrawLP(uint amount) public virtual {
-        require(amount > 0, "Invalid LP amount");
-        require(amount <= lpToken.balanceOf(msg.sender), "LP balance exceeded");
-
-        uint precision = 10 ** uint(portfolioPercentageDecimals());
-        uint withdrawPerc = precision * amount / lpToken.totalSupply();
-
-        // calculate amount of depositTokens & investTokens to withdraw
-        uint depositTokensBeforeSwap = depositToken.balanceOf(address(this));
-        uint investTokensBeforeSwap = investToken.balanceOf(address(this));
-
-        // the amount of deposit and invest tokens to withdraw
-        bool isWithdrawingAll = (amount == lpToken.totalSupply());
-        uint withdrawDepositTokensAmount = isWithdrawingAll ? depositTokensBeforeSwap : depositTokensBeforeSwap * withdrawPerc / precision;
-        uint withdrawInvestTokensTokensAmount = isWithdrawingAll ? investTokensBeforeSwap : investTokensBeforeSwap * withdrawPerc / precision;
-
-         // burn the user LP
-        lpToken.burn(msg.sender, amount);
-
-        uint depositTokensSwapped = 0;
-        // check if have to swap some invest tokens back into deposit tokens
-        if (withdrawInvestTokensTokensAmount > 0) {
-            // swap some investTokens into depositTokens to be withdrawn
-            uint256 amountMin = getAmountOutMin(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount);
-            swap(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount, amountMin, address(this));
-        
-            // determine how much depositTokens where swapped
-            uint depositTokensAfterSwap = depositToken.balanceOf(address(this));
-            require(depositTokensAfterSwap >= depositTokensBeforeSwap, "Deposit tokens after swap are less than amount before swap");
-            depositTokensSwapped = depositTokensAfterSwap - depositTokensBeforeSwap;
-        }
-
-        // transfer depositTokens to the user
-        uint amountToWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;        
-        super.withdraw(amountToWithdraw);
-    }
-
-
-    function getSwapsInfo() public view returns (PoolLib.SwapInfo[] memory) {
-        return swaps;
-    }
-
   
     // Returns the min amount of tokens expected from the swap and the slippage calculated as a percentage from the feed price. 
     // The returned percentage is returned with 4 digits decimals
@@ -261,6 +157,114 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         slippage = 10000 - (10000 * amountMin / amountExpected); // e.g 10000 - 9500 = 500  (5% slippage)
     }
 
+
+
+    //////  PUBLIC FUNCTIONS  ////// 
+
+    // User deposits 'amount' of depositTokens into the pool
+    function deposit(uint amount) public override {
+
+        //portfolio allocation before the deposit
+        uint investTokenPerc = investTokenPercentage();
+
+        //transfer deposit amount into the pool
+        super.deposit(amount);
+
+        // calculate LP tokens for this deposit (after deposit tokens have been transferred to the pool)
+        uint depositLPTokens = lpTokensForDeposit(amount);
+
+        if (lpToken.totalSupply() == 0) {
+            // run the strategy after the first deposit
+            invest(); 
+        } else {
+            // swap some of the deposit amount into investTokens to keep the pool balanced at current levels
+            uint precision = 10 ** uint(portfolioPercentageDecimals());
+            uint rebalanceAmount = investTokenPerc * amount / precision;
+            if (rebalanceAmount > 0) {
+                swapIfNotExcessiveSlippage(StrategyAction.BUY, address(depositToken), address(investToken), rebalanceAmount, false);
+            }
+        }
+
+        // mint lp tokens to the user
+        lpToken.mint(msg.sender, depositLPTokens);
+    }
+
+
+    // Withdraw all LP tokens
+    function withdrawAll() external {
+        withdrawLP(lpToken.balanceOf(msg.sender));
+    }
+
+
+    // Send the equivalent value in deposit tokens to the sender after bruning the amount of LP tokens provided
+    function withdrawLP(uint amount) public virtual {
+        require(amount > 0, "Invalid LP amount");
+        require(amount <= lpToken.balanceOf(msg.sender), "LP balance exceeded");
+
+        uint precision = 10 ** uint(portfolioPercentageDecimals());
+        uint withdrawPerc = precision * amount / lpToken.totalSupply();
+
+        // calculate amount of depositTokens & investTokens to withdraw
+        uint depositTokensBeforeSwap = depositToken.balanceOf(address(this));
+        uint investTokensBeforeSwap = investToken.balanceOf(address(this));
+
+        // the amount of deposit and invest tokens to withdraw
+        bool isWithdrawingAll = (amount == lpToken.totalSupply());
+        uint withdrawDepositTokensAmount = isWithdrawingAll ? depositTokensBeforeSwap : depositTokensBeforeSwap * withdrawPerc / precision;
+        uint withdrawInvestTokensTokensAmount = isWithdrawingAll ? investTokensBeforeSwap : investTokensBeforeSwap * withdrawPerc / precision;
+
+        // burn the user's LP tokens
+        lpToken.burn(msg.sender, amount);
+
+        uint depositTokensSwapped = 0;
+        // check if have to swap some invest tokens back into deposit tokens
+        if (withdrawInvestTokensTokensAmount > 0) {
+            // swap some investTokens into depositTokens to be withdrawn
+            uint256 amountMin = getAmountOutMin(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount);
+            swap(address(investToken), address(depositToken), withdrawInvestTokensTokensAmount, amountMin, address(this));
+        
+            // determine how much depositTokens where swapped
+            uint depositTokensAfterSwap = depositToken.balanceOf(address(this));
+            depositTokensSwapped = depositTokensAfterSwap - depositTokensBeforeSwap;
+        }
+
+        // transfer depositTokens to the user
+        uint amountToWithdraw = withdrawDepositTokensAmount + depositTokensSwapped;        
+        super.withdraw(amountToWithdraw);
+    }
+
+
+    
+
+    //// INTERNAL FUNCTIONS
+
+    // calculate the LP tokens for a deposit of 'amount' tokens after the deposit tokens have been transferred into the pool
+    function lpTokensForDeposit(uint amount) internal view returns (uint) {
+        
+        uint depositLPTokens;
+         if (lpToken.totalSupply() == 0) {
+             ///// If first deposit => allocate the inital LP tokens amount to the user
+            depositLPTokens = amount;
+        } else {
+            ///// if already have allocated LP tokens => calculate the additional LP tokens for this deposit
+
+            // calculate portfolio % of the deposit (using lpPrecision digits precision)
+            uint lpPrecision = 10 ** uint(lpToken.decimals());
+            uint portFolioPercentage = lpPrecision * amount / totalValue();
+
+            // calculate the amount of LP tokens for the deposit so that they represent 
+            // a % of the existing LP tokens equivalent to the % value of this deposit to the whole portfolio value.
+            // 
+            // X := P * T / (1 - P)  
+            //      X: additinal LP toleks to allocate to the user to account for this deposit
+            //      P: Percentage of portfolio accounted by this deposit
+            //      T: total LP tokens allocated before this deposit
+    
+            depositLPTokens = (portFolioPercentage * lpToken.totalSupply()) / ((1 * lpPrecision) - portFolioPercentage);
+        }
+
+        return depositLPTokens;
+    }
 
 
     function invest() internal {
@@ -308,7 +312,7 @@ contract Pool is IPool, Wallet, KeeperCompatibleInterface  {
         (uint amountMin, uint slippage) = slippagePercentage(_tokenIn, _tokenOut, _amountIn);
 
         if (slippage > slippageThereshold) {
-            revert("Slippage thereshold exceeded");
+            revert("Slippage exceeded");
         }
 
         uint256 depositTokenBalanceBefore = depositToken.balanceOf(address(this));

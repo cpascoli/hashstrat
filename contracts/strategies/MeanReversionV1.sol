@@ -97,7 +97,7 @@ contract MeanReversionV1 is IStrategy, Ownable {
         updateMovingAverage(price);
 
         // if the pool is empty do nothing
-        uint poolValue = pool.totalPortfolioValue();
+        uint poolValue = pool.totalValue();
         if (poolValue == 0) {
             return (StrategyAction.NONE, 0);
         }
@@ -125,7 +125,7 @@ contract MeanReversionV1 is IStrategy, Ownable {
     function evaluateTrade() public view returns (StrategyAction action, uint amountIn) {
 
         action = StrategyAction.NONE;
-        uint poolValue = pool.totalPortfolioValue();
+        uint poolValue = pool.totalValue();
 
         (   /*uint80 roundID**/, int price, /*uint startedAt*/,
             /*uint timeStamp*/, /*uint80 answeredInRound*/
@@ -168,15 +168,15 @@ contract MeanReversionV1 is IStrategy, Ownable {
     // Assumes pool.totalPortfolioValue > 0 or returns 0
     function investPercent() public view returns (uint investPerc) {
 
-        uint investTokenValue = pool.investedTokenValue();
-        uint poolValue = pool.totalPortfolioValue();
+        uint riskAssetValue = pool.riskAssetValue();
+        uint poolValue = pool.totalValue();
         if (poolValue == 0) return 0;
 
-        investPerc = (percentPrecision * investTokenValue / poolValue); // the % of invest tokens in the pool
+        investPerc = (percentPrecision * riskAssetValue / poolValue); // the % of risk asset in the pool
     }
 
 
-    // determine the amount of deposit tokens to SELL to have minAllocationPerc % invest tokens
+    // determine the amount of stable asset to SELL to have minAllocationPerc % invest tokens
     function rebalanceDepositTokensAmount() public view returns (uint) {
 
             uint investPerc = investPercent(); // with percentPrecision digits
@@ -188,10 +188,10 @@ contract MeanReversionV1 is IStrategy, Ownable {
 
                 // calculate amount of deposit tokens to sell (to BUY invest tokens)
                 uint maxPerc = percentPrecision - minPerc;  //  1 - invest_token %
-                uint poolValue = pool.totalPortfolioValue();
+                uint poolValue = pool.totalValue();
                 uint maxDepositValue = poolValue * maxPerc / percentPrecision;
 
-                uint depositTokenValue = pool.depositTokenValue();
+                uint depositTokenValue = pool.stableAssetValue();
                 amountIn = (depositTokenValue > maxDepositValue) ? depositTokenValue - maxDepositValue : 0;
             }
 
@@ -217,8 +217,8 @@ contract MeanReversionV1 is IStrategy, Ownable {
             // calculate amount of invest tokens to sell (to BUY deposit tokens)
 
             // need to SELL some investment tokens
-            uint poolValue = pool.totalPortfolioValue();
-            uint investTokenValue = pool.investedTokenValue();
+            uint poolValue = pool.totalValue();
+            uint investTokenValue = pool.riskAssetValue();
 
             uint targetInvestPerc = percentPrecision - targetDepositPerc;  //  1 - deposit_token % (e.g. 80%)
             uint targetInvestTokenValue = poolValue * targetInvestPerc / percentPrecision;
